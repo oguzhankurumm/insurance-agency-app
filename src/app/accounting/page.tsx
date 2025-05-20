@@ -5,7 +5,7 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 import AccountingTable from "@/components/AccountingTable";
 import AccountingFormModal from "@/components/AccountingFormModal";
 import type { AccountingRecord, AccountingFormData } from "@/types/accounting";
-import type { Policy } from "@/lib/db";
+import type { Policy } from "@/types/policy";
 
 export default function AccountingPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -128,6 +128,7 @@ export default function AccountingPage() {
       : null;
     return (
       customer?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      policy?.plateNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       !searchTerm
     );
   });
@@ -160,7 +161,7 @@ export default function AccountingPage() {
             setSelectedRecord(null);
             setIsModalOpen(true);
           }}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-blue-600 hover:bg-blue-700"
+          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
           Yeni Kayıt
@@ -170,7 +171,7 @@ export default function AccountingPage() {
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Müşteri adına göre ara..."
+          placeholder="Müşteri adı veya plaka numarasına göre ara..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 [&::placeholder]:text-black"

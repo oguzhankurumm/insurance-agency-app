@@ -14,6 +14,17 @@ export interface Policy {
   policyType: string;
   status: "Aktif" | "Pasif" | "İptal";
   description: string;
+  files?: PolicyFile[];
+}
+
+export interface PolicyFile {
+  id: number;
+  policyId: number;
+  name: string;
+  size: number;
+  type: string;
+  url: string;
+  createdAt: string;
 }
 
 export interface Customer {
@@ -41,6 +52,8 @@ export async function getDb(): Promise<Database> {
   if (!db) {
     try {
       const dbPath = path.join(process.cwd(), "insurance.db");
+      console.log("Veritabanı yolu:", dbPath);
+
       db = await open({
         filename: dbPath,
         driver: sqlite3.Database,
@@ -48,29 +61,27 @@ export async function getDb(): Promise<Database> {
 
       // Tabloları oluştur
       await db.exec(`
-        CREATE TABLE IF NOT EXISTS policies (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          policyNumber TEXT UNIQUE NOT NULL,
-          customerId INTEGER NOT NULL,
-          customerName TEXT NOT NULL,
-          tcNumber TEXT NOT NULL,
-          startDate TEXT NOT NULL,
-          endDate TEXT NOT NULL,
-          premium REAL NOT NULL,
-          policyType TEXT NOT NULL,
-          status TEXT NOT NULL,
-          description TEXT,
-          FOREIGN KEY (customerId) REFERENCES customers (id)
-        );
-
         CREATE TABLE IF NOT EXISTS customers (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
           email TEXT,
           phone TEXT,
           address TEXT,
-          createdAt TEXT NOT NULL,
-          updatedAt TEXT NOT NULL
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS policies (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          customerId INTEGER NOT NULL,
+          policyNumber TEXT NOT NULL,
+          plateNumber TEXT,
+          startDate TEXT NOT NULL,
+          endDate TEXT NOT NULL,
+          premium REAL NOT NULL,
+          status TEXT NOT NULL,
+          type TEXT NOT NULL,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (customerId) REFERENCES customers(id)
         );
 
         CREATE TABLE IF NOT EXISTS accounting (
@@ -80,9 +91,25 @@ export async function getDb(): Promise<Database> {
           amount REAL NOT NULL,
           type TEXT NOT NULL,
           description TEXT,
-          FOREIGN KEY (policyId) REFERENCES policies (id)
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (policyId) REFERENCES policies(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS policy_files (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          policyId INTEGER NOT NULL,
+          fileName TEXT NOT NULL,
+          fileUrl TEXT NOT NULL,
+          fileType TEXT NOT NULL,
+          fileSize INTEGER NOT NULL,
+          uploadDate TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (policyId) REFERENCES policies(id)
         );
       `);
+
+      // Tablo yapısını kontrol et
+      const tableInfo = await db.all("PRAGMA table_info(policy_files)");
+      console.log("policy_files tablo yapısı:", tableInfo);
 
       console.log("Veritabanı bağlantısı başarılı");
     } catch (error) {

@@ -1,15 +1,25 @@
+export interface FileData {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  url?: string;
+}
+
 export interface Policy {
   id: number;
   policyNumber: string;
   customerId: number;
   customerName: string;
   tcNumber: string;
+  plateNumber?: string;
   startDate: string;
   endDate: string;
   premium: number;
   policyType: string;
   status: "Aktif" | "Pasif" | "İptal";
   description: string;
+  files?: FileData[];
 }
 
 export interface PolicyFilter {
@@ -17,6 +27,7 @@ export interface PolicyFilter {
   startDate?: string;
   endDate?: string;
   customerName?: string;
+  plateNumber?: string;
   search?: string;
 }
 
@@ -35,12 +46,14 @@ export interface PolicyFormData {
   customerId: number;
   customerName: string;
   tcNumber: string;
+  plateNumber?: string;
   startDate: string;
   endDate: string;
   premium: number;
   policyType: (typeof POLICY_TYPES)[number];
   status: "Aktif" | "Pasif" | "İptal";
   description: string;
+  files?: FileData[];
 }
 
 export interface PolicyFormState {
@@ -48,6 +61,7 @@ export interface PolicyFormState {
   customerId: number;
   customerName: string;
   tcNumber: string;
+  plateNumber?: string;
   startDate: Date;
   endDate: Date;
   premium: number;

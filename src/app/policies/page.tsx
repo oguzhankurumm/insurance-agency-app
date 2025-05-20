@@ -16,6 +16,7 @@ import {
   TrashIcon,
   EyeIcon,
   PlusIcon,
+  DocumentIcon,
 } from "@heroicons/react/24/outline";
 import {
   Policy,
@@ -28,6 +29,14 @@ import PolicyFormModal from "@/components/PolicyFormModal";
 import useDebounce from "@/hooks/useDebounce";
 
 const columnHelper = createColumnHelper<Policy>();
+
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
 
 export default function PoliciesPage() {
   const [policies, setPolicies] = useState<Policy[]>([]);
@@ -59,13 +68,22 @@ export default function PoliciesPage() {
     }
   };
 
-  const handleEdit = (policy: Policy) => {
-    setEditingPolicy({
-      ...policy,
-      startDate: new Date(policy.startDate).toISOString(),
-      endDate: new Date(policy.endDate).toISOString(),
-    });
-    setIsFormModalOpen(true);
+  const handleEdit = async (policy: Policy) => {
+    try {
+      const response = await fetch(`/api/policies/${policy.id}`);
+      if (!response.ok) throw new Error("Poliçe detayları alınamadı");
+      const { data } = await response.json();
+
+      setEditingPolicy({
+        ...data.policy,
+        startDate: new Date(data.policy.startDate).toISOString(),
+        endDate: new Date(data.policy.endDate).toISOString(),
+        files: data.policy.files || [],
+      });
+      setIsFormModalOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Bir hata oluştu");
+    }
   };
 
   const handleDelete = async (policy: Policy) => {
@@ -89,6 +107,10 @@ export default function PoliciesPage() {
     columnHelper.accessor("customerName", {
       header: "Müşteri",
       cell: (info) => info.getValue(),
+    }),
+    columnHelper.accessor("plateNumber", {
+      header: "Plaka No",
+      cell: (info) => info.getValue() || "-",
     }),
     columnHelper.accessor("startDate", {
       header: "Başlangıç",
@@ -300,7 +322,7 @@ export default function PoliciesPage() {
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Poliçe no veya müşteri ara..."
+                placeholder="Poliçe no, müşteri adı veya plaka no ile ara..."
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-10 text-gray-900"
               />
               <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -506,6 +528,46 @@ export default function PoliciesPage() {
                   </table>
                 </div>
 
+                <h3 className="text-lg font-semibold text-gray-900 mt-6 mb-4">
+                  Dosyalar
+                </h3>
+                <div className="space-y-2">
+                  {selectedPolicy.files && selectedPolicy.files.length > 0 ? (
+                    selectedPolicy.files.map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-center justify-between bg-gray-50 p-3 rounded-md"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <DocumentIcon className="h-6 w-6 text-gray-400" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {file.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {formatFileSize(file.size)}
+                            </p>
+                          </div>
+                        </div>
+                        {file.url && (
+                          <a
+                            href={file.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          >
+                            İndir
+                          </a>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">
+                      Henüz dosya yüklenmemiş
+                    </p>
+                  )}
+                </div>
+
                 <div className="mt-6 flex justify-end">
                   <button
                     onClick={() => setIsDetailModalOpen(false)}
@@ -542,6 +604,7 @@ export default function PoliciesPage() {
                   editingPolicy.policyType as (typeof POLICY_TYPES)[number],
                 status: editingPolicy.status,
                 description: editingPolicy.description,
+                files: editingPolicy.files || [],
               }
             : undefined
         }

@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/db";
-import type { Policy, AccountingRecord } from "@/lib/db";
+import type { Policy, AccountingRecord, PolicyFile } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 interface RouteParams {
@@ -22,6 +22,12 @@ export async function GET(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Poliçe bulunamadı" }, { status: 404 });
     }
 
+    // Poliçeye ait dosyaları al
+    const files = await db.all<PolicyFile>(
+      "SELECT * FROM policy_files WHERE policyId = ? ORDER BY createdAt DESC",
+      [id]
+    );
+
     // Poliçeye ait muhasebe kayıtlarını al
     const accountingRecords = await db.all<AccountingRecord>(
       "SELECT * FROM accounting WHERE policyId = ? ORDER BY transactionDate DESC",
@@ -30,7 +36,10 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     return NextResponse.json({
       data: {
-        policy,
+        policy: {
+          ...policy,
+          files,
+        },
         accountingRecords,
       },
     });
@@ -55,6 +64,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
         policyNumber = ?,
         customerId = ?,
         tcNumber = ?,
+        plateNumber = ?,
         startDate = ?,
         endDate = ?,
         premium = ?,
@@ -66,6 +76,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
         data.policyNumber,
         data.customerId,
         data.tcNumber,
+        data.plateNumber,
         data.startDate,
         data.endDate,
         data.premium,
@@ -80,10 +91,47 @@ export async function PUT(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Poliçe bulunamadı" }, { status: 404 });
     }
 
+    // Mevcut dosyaları sil
+    await db.run("DELETE FROM policy_files WHERE policyId = ?", [id]);
+
+    // Yeni dosyaları ekle
+    if (data.files && data.files.length > 0) {
+      for (const file of data.files) {
+        await db.run(
+          `INSERT INTO policy_files (
+            policyId,
+            name,
+            size,
+            type,
+            url,
+            createdAt
+          ) VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            id,
+            file.name,
+            file.size,
+            file.type,
+            file.url,
+            new Date().toISOString(),
+          ]
+        );
+      }
+    }
+
+    // Güncellenmiş poliçeyi getir
+    const updatedPolicy = await db.get<Policy>(
+      "SELECT * FROM policies WHERE id = ?",
+      [id]
+    );
+    const policyFiles = await db.all<PolicyFile>(
+      "SELECT * FROM policy_files WHERE policyId = ?",
+      [id]
+    );
+
     return NextResponse.json({
       data: {
-        message: "Poliçe başarıyla güncellendi",
-        id: id,
+        ...updatedPolicy,
+        files: policyFiles,
       },
     });
   } catch (error) {
