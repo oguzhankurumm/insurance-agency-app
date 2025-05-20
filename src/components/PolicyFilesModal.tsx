@@ -1,6 +1,10 @@
 import { Dialog } from "@headlessui/react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
-import { useState, useEffect } from "react";
+import {
+  XMarkIcon,
+  ArrowUpTrayIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
+import { useState, useEffect, useRef } from "react";
 
 interface PolicyFile {
   id: number;
@@ -28,7 +32,9 @@ export default function PolicyFilesModal({
 }: PolicyFilesModalProps) {
   const [files, setFiles] = useState<PolicyFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -54,6 +60,65 @@ export default function PolicyFilesModal({
     }
   };
 
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`/api/policies/${policy.id}/files`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Dosya yüklenemedi");
+      }
+
+      const newFile = await response.json();
+      setFiles((prevFiles) => [newFile, ...prevFiles]);
+    } catch (error) {
+      console.error("Dosya yüklenirken hata:", error);
+      setError("Dosya yüklenemedi");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleDeleteFile = async (fileId: number) => {
+    if (!window.confirm("Bu dosyayı silmek istediğinizden emin misiniz?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/policies/${policy.id}/files?fileId=${fileId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Dosya silinemedi");
+      }
+
+      setFiles((prevFiles) => prevFiles.filter((file) => file.id !== fileId));
+    } catch (error) {
+      console.error("Dosya silinirken hata:", error);
+      setError("Dosya silinemedi");
+    }
+  };
+
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
       <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
@@ -70,6 +135,28 @@ export default function PolicyFilesModal({
             >
               <XMarkIcon className="h-6 w-6" />
             </button>
+          </div>
+
+          <div className="mb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ArrowUpTrayIcon className="h-5 w-5 mr-2" />
+                  {isUploading ? "Yükleniyor..." : "Dosya Yükle"}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -104,14 +191,22 @@ export default function PolicyFilesModal({
                           {new Date(file.createdAt).toLocaleDateString("tr-TR")}
                         </p>
                       </div>
-                      <a
-                        href={file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        İndir
-                      </a>
+                      <div className="flex items-center space-x-2">
+                        <a
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          İndir
+                        </a>
+                        <button
+                          onClick={() => handleDeleteFile(file.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
