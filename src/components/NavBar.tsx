@@ -11,7 +11,6 @@ const NavBar = () => {
     { name: "Poliçeler", path: "/policies" },
     { name: "Muhasebe", path: "/accounting" },
     { name: "Raporlar", path: "/reports" },
-    { name: "Ayarlar", path: "/settings" },
   ];
 
   return (

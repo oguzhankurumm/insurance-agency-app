@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { CSVLink } from "react-csv";
 import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { ReportType, ReportFilter, ReportData } from "@/types/report";
@@ -79,22 +79,90 @@ export default function ReportsPage() {
   const handleExportPDF = () => {
     if (!reportData) return;
 
-    const doc = new jsPDF();
-    const headers = Object.keys(reportData.data[0] || {});
-    const data = reportData.data.map((item) =>
-      headers.map((header) => item[header as keyof typeof item])
-    );
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
 
-    (
-      doc as unknown as {
-        autoTable: (options: {
-          head: string[][];
-          body: (string | number | undefined)[][];
-        }) => void;
-      }
-    ).autoTable({
-      head: [headers],
+    // Türkçe font desteği için
+    doc.setFont("helvetica", "normal");
+    doc.setLanguage("tr");
+
+    const headers = Object.keys(reportData.data[0] || {});
+
+    // Verileri formatla
+    const data = reportData.data.map((item) => {
+      return headers.map((header) => {
+        const value = item[header as keyof typeof item];
+
+        // Tarih formatlaması
+        if (header.toLowerCase().includes("date") && value) {
+          return new Date(value).toLocaleDateString("tr-TR");
+        }
+
+        // Para birimi formatlaması
+        if (
+          header.toLowerCase().includes("premium") &&
+          typeof value === "number"
+        ) {
+          return `₺${Number(value).toLocaleString("tr-TR")}`;
+        }
+
+        // Boş değer kontrolü
+        return value ?? "-";
+      });
+    });
+
+    // Türkçe başlık isimleri
+    const turkishHeaders = headers.map((header) => {
+      const headerMap: { [key: string]: string } = {
+        id: "ID",
+        policyNumber: "Poliçe No",
+        customerName: "Musteri Adı",
+        startDate: "Başlangiç Tarihi",
+        endDate: "Bitis Tarihi",
+        premium: "Prim",
+        policyType: "Poliçe Türü",
+        status: "Durum",
+      };
+      return headerMap[header] || header;
+    });
+
+    autoTable(doc, {
+      head: [turkishHeaders],
       body: data,
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+        overflow: "linebreak",
+        halign: "left",
+        font: "helvetica",
+        fontStyle: "normal",
+      },
+      headStyles: {
+        fillColor: [66, 139, 202],
+        textColor: 255,
+        fontSize: 9,
+        fontStyle: "bold",
+        halign: "center",
+        font: "helvetica",
+      },
+      columnStyles: {
+        0: { cellWidth: 10 }, // ID
+        1: { cellWidth: 30 }, // Poliçe No
+        2: { cellWidth: 35 }, // Müşteri Adı
+        3: { cellWidth: 25 }, // Başlangıç Tarihi
+        4: { cellWidth: 25 }, // Bitiş Tarihi
+        5: { cellWidth: 20 }, // Prim
+        6: { cellWidth: 25 }, // Poliçe Türü
+        7: { cellWidth: 20 }, // Durum
+      },
+      margin: { top: 20, right: 10, bottom: 10, left: 10 },
+      theme: "grid",
+      didDrawPage: function () {
+        doc.setFont("helvetica", "normal");
+      },
     });
 
     doc.save(`${reportType}_${new Date().toISOString()}.pdf`);
