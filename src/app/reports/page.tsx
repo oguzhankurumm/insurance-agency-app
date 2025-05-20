@@ -49,7 +49,6 @@ export default function ReportsPage() {
       if (!response.ok) throw new Error("Rapor alınamadı");
 
       const data = await response.json();
-      console.log("Received report data:", data);
       setReportData(data);
     } catch (err) {
       console.error("Error fetching report:", err);

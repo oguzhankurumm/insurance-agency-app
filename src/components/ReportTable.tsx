@@ -6,10 +6,7 @@ interface ReportTableProps {
 }
 
 export default function ReportTable({ data, type }: ReportTableProps) {
-  console.log("Rendering table with type:", type, "and data:", data);
-
   const getColumns = () => {
-    console.log("Getting columns for type:", type);
     switch (type) {
       case "active-policies":
       case "expiring-policies":
@@ -71,10 +68,8 @@ export default function ReportTable({ data, type }: ReportTableProps) {
   };
 
   const columns = getColumns();
-  console.log("Generated columns:", columns);
 
   if (!data.length) {
-    console.log("No data available for table");
     return (
       <div className="text-center py-4 text-gray-500">Veri bulunamadı</div>
     );
