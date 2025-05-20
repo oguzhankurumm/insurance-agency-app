@@ -31,6 +31,15 @@ export async function GET() {
       "SELECT SUM(amount) as total FROM accounting WHERE type = 'Gider'"
     );
 
+    // Vadesi yaklaşan poliçeler (7 gün veya daha az)
+    const expiringPolicies = await db.all<Policy>(
+      `SELECT * FROM policies 
+       WHERE status = 'Aktif' 
+       AND endDate >= date('now') 
+       AND endDate <= date('now', '+7 days')
+       ORDER BY endDate ASC`
+    );
+
     return NextResponse.json({
       data: {
         recentPolicies,
@@ -38,6 +47,7 @@ export async function GET() {
         recentTransactions,
         totalIncome: totalIncome?.total || 0,
         totalExpense: totalExpense?.total || 0,
+        expiringPolicies,
       },
     });
   } catch (error) {

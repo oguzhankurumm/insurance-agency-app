@@ -9,6 +9,7 @@ interface DashboardData {
   totalExpense: number;
   recentPolicies: Policy[];
   recentTransactions: AccountingRecord[];
+  expiringPolicies: Policy[];
 }
 
 export default function Home() {
@@ -169,6 +170,63 @@ export default function Home() {
                     </tr>
                   )
                 )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="h-12" />
+
+      <div>
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900">
+            Vadesi Yaklaşan Poliçeler
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Poliçe No
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Müşteri
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tür
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Prim
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Bitiş Tarihi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {dashboardData.expiringPolicies.map((policy: Policy) => (
+                  <tr key={policy.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {policy.policyNumber}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {policy.customerName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {policy.policyType}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Intl.NumberFormat("tr-TR", {
+                        style: "currency",
+                        currency: "TRY",
+                      }).format(policy.premium)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
+                      {new Date(policy.endDate).toLocaleDateString("tr-TR")}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
