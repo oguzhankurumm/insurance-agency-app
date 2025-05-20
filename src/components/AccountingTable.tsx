@@ -57,7 +57,14 @@ export default function AccountingTable({
         const customer = policy
           ? customers.find((c) => c.id === policy.customerId)
           : null;
-        return customer?.name || "-";
+        return (
+          <div>
+            <div>{customer?.name || "-"}</div>
+            <div className="text-sm text-gray-500">
+              {info.row.original.policyNumber}
+            </div>
+          </div>
+        );
       },
     },
     {
@@ -70,11 +77,6 @@ export default function AccountingTable({
 
         return policy?.plateNumber ?? "-";
       },
-    },
-    {
-      header: "Poliçe No",
-      accessorKey: "policyNumber",
-      cell: (info: { getValue: () => string }) => info.getValue(),
     },
     {
       header: "Tür",
