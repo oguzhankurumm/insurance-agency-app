@@ -25,7 +25,7 @@ interface AccountingFormModalProps {
   onClose: () => void;
   onSubmit: (data: AccountingFormData) => void;
   initialData?: AccountingRecord | null;
-  policies: { id: string; policyNumber: string }[];
+  policies: { id: string; policyNumber: string; customerName: string }[];
 }
 
 export default function AccountingFormModal({
@@ -72,7 +72,7 @@ export default function AccountingFormModal({
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
       <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="mx-auto max-w-lg rounded-lg bg-white p-6">
+        <Dialog.Panel className="mx-auto max-w-2xl rounded-lg bg-white p-6">
           <Dialog.Title className="text-lg font-medium text-gray-900 mb-4">
             {initialData ? "Muhasebe Kaydını Düzenle" : "Yeni Muhasebe Kaydı"}
           </Dialog.Title>
@@ -89,7 +89,7 @@ export default function AccountingFormModal({
                 <option value="">Poliçe Seçin</option>
                 {policies.map((policy) => (
                   <option key={policy.id} value={policy.id}>
-                    {policy.policyNumber}
+                    {policy.policyNumber} ({policy.customerName})
                   </option>
                 ))}
               </select>
@@ -108,7 +108,8 @@ export default function AccountingFormModal({
                 selected={transactionDate}
                 onChange={(date) => date && setValue("transactionDate", date)}
                 dateFormat="dd/MM/yyyy"
-                className="mt-1 block w-full rounded-md text-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
+                wrapperClassName="w-full"
               />
               {errors.transactionDate && (
                 <p className="mt-1 text-sm text-red-600">

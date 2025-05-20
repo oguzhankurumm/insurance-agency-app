@@ -22,6 +22,7 @@ export default function ReportChart({ data, type }: ReportChartProps) {
   const chartInstance = useRef<Chart | null>(null);
 
   const getChartData = useCallback(() => {
+    console.log("Getting chart data for type:", type, "with data:", data);
     switch (type) {
       case "active-policies":
       case "expiring-policies":
@@ -159,18 +160,31 @@ export default function ReportChart({ data, type }: ReportChartProps) {
   }, [data, type]);
 
   useEffect(() => {
-    if (!chartRef.current || !data.length) return;
+    if (!chartRef.current || !data.length) {
+      console.log("Chart not rendered:", {
+        hasRef: !!chartRef.current,
+        dataLength: data.length,
+      });
+      return;
+    }
 
     if (chartInstance.current) {
       chartInstance.current.destroy();
     }
 
     const ctx = chartRef.current.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) {
+      console.log("Could not get canvas context");
+      return;
+    }
 
     const chartData = getChartData();
-    if (!chartData) return;
+    if (!chartData) {
+      console.log("No chart data generated");
+      return;
+    }
 
+    console.log("Creating chart with data:", chartData);
     chartInstance.current = new Chart(ctx, {
       type: chartData.type,
       data: chartData.data,

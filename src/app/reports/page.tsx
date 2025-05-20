@@ -36,14 +36,23 @@ export default function ReportsPage() {
         queryParams.append("customerName", filter.customerName);
       }
 
+      console.log(
+        "Fetching report:",
+        reportType,
+        "with params:",
+        queryParams.toString()
+      );
+
       const response = await fetch(
         `/api/reports/${reportType}?${queryParams.toString()}`
       );
       if (!response.ok) throw new Error("Rapor alınamadı");
 
       const data = await response.json();
+      console.log("Received report data:", data);
       setReportData(data);
     } catch (err) {
+      console.error("Error fetching report:", err);
       setError(err instanceof Error ? err.message : "Bir hata oluştu");
     } finally {
       setLoading(false);

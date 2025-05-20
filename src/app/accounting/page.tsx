@@ -14,11 +14,16 @@ export default function AccountingPage() {
   );
   const [records, setRecords] = useState<AccountingRecord[]>([]);
   const [policies, setPolicies] = useState<Policy[]>([]);
+  const [customers, setCustomers] = useState<{ id: number; name: string }[]>(
+    []
+  );
+  const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRecords();
     fetchPolicies();
+    fetchCustomers();
   }, []);
 
   const fetchRecords = async () => {
@@ -39,11 +44,21 @@ export default function AccountingPage() {
       if (!response.ok) throw new Error("Poliçeler alınamadı");
       const data = await response.json();
       setPolicies(data.data || []);
-
-      console.log("data", data.data);
     } catch (error) {
       console.error("Poliçeler alınırken hata:", error);
       setError("Poliçeler alınamadı");
+    }
+  };
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch("/api/customers");
+      if (!response.ok) throw new Error("Müşteriler alınamadı");
+      const data = await response.json();
+      setCustomers(data.data || []);
+    } catch (error) {
+      console.error("Müşteriler alınırken hata:", error);
+      setError("Müşteriler alınamadı");
     }
   };
 
@@ -106,6 +121,17 @@ export default function AccountingPage() {
     }
   };
 
+  const filteredRecords = records.filter((record) => {
+    const policy = policies.find((p) => p.id === record.policyId);
+    const customer = policy
+      ? customers.find((c) => c.id === policy.customerId)
+      : null;
+    return (
+      customer?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      !searchTerm
+    );
+  });
+
   if (error) {
     return (
       <div className="text-center p-4">
@@ -115,6 +141,7 @@ export default function AccountingPage() {
             setError(null);
             fetchRecords();
             fetchPolicies();
+            fetchCustomers();
           }}
           className="mt-2 text-blue-500 hover:text-blue-700"
         >
@@ -133,17 +160,30 @@ export default function AccountingPage() {
             setSelectedRecord(null);
             setIsModalOpen(true);
           }}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-blue-600 hover:bg-blue-700"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
           Yeni Kayıt
         </button>
       </div>
 
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Müşteri adına göre ara..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 [&::placeholder]:text-black"
+          style={{ color: "black" }}
+        />
+      </div>
+
       <AccountingTable
-        records={records}
+        records={filteredRecords}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        customers={customers}
+        policies={policies}
       />
 
       <AccountingFormModal
@@ -159,6 +199,7 @@ export default function AccountingPage() {
           .map((p) => ({
             id: p.id.toString(),
             policyNumber: p.policyNumber,
+            customerName: p.customerName,
           }))}
       />
     </div>

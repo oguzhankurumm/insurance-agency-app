@@ -8,11 +8,14 @@ import {
 } from "@tanstack/react-table";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { AccountingRecord } from "@/types/accounting";
+import type { Policy } from "@/lib/db";
 
 interface AccountingTableProps {
   records: AccountingRecord[];
   onEdit: (record: AccountingRecord) => void;
   onDelete: (record: AccountingRecord) => Promise<void>;
+  customers: { id: number; name: string }[];
+  policies: Policy[];
 }
 
 const columnHelper = createColumnHelper<AccountingRecord>();
@@ -30,6 +33,8 @@ export default function AccountingTable({
   records,
   onEdit,
   onDelete,
+  customers,
+  policies,
 }: AccountingTableProps) {
   const columns = [
     columnHelper.accessor("transactionDate", {
@@ -39,6 +44,19 @@ export default function AccountingTable({
     columnHelper.accessor("policyNumber", {
       header: "Poliçe No",
       cell: (info) => info.getValue(),
+    }),
+    columnHelper.display({
+      id: "customerName",
+      header: "Müşteri",
+      cell: (info) => {
+        const policy = policies.find(
+          (p) => p.id === info.row.original.policyId
+        );
+        const customer = policy
+          ? customers.find((c) => c.id === policy.customerId)
+          : null;
+        return customer?.name || "-";
+      },
     }),
     columnHelper.accessor("amount", {
       header: "Tutar",

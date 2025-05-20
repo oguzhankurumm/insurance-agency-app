@@ -17,15 +17,51 @@ export default function Home() {
     null
   );
   const [loading, setLoading] = useState(true);
+  const [filteredPolicies, setFilteredPolicies] = useState<Policy[] | null>(
+    null
+  );
+  const [selectedDate, setSelectedDate] = useState<string>(
+    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+  );
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await fetch("/api/dashboard");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new TypeError("API yanıtı JSON formatında değil!");
+        }
         const data = await response.json();
+        if (!data.data) {
+          throw new Error("API yanıtında data alanı bulunamadı");
+        }
         setDashboardData(data.data);
+
+        // İlk yüklemede filtreleme yap
+        if (data.data.expiringPolicies) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const endDate = new Date(selectedDate);
+          endDate.setHours(23, 59, 59, 999); // Seçilen günün sonuna ayarla
+
+          const filtered = data.data.expiringPolicies.filter(
+            (policy: Policy) => {
+              const policyDate = new Date(policy.endDate);
+              policyDate.setHours(0, 0, 0, 0);
+              return policyDate >= today && policyDate <= endDate;
+            }
+          );
+          setFilteredPolicies(filtered);
+        }
       } catch (error) {
         console.error("Dashboard verileri alınırken hata:", error);
+        // Hata durumunda kullanıcıya bilgi ver
+        alert("Veriler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.");
       } finally {
         setLoading(false);
       }
@@ -35,7 +71,30 @@ export default function Home() {
     const interval = setInterval(fetchData, 60000); // 60 saniyede bir güncelle
 
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedDate]);
+
+  // Tarih değişikliğini yöneten fonksiyon
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDate = e.target.value;
+    setSelectedDate(newDate);
+
+    if (dashboardData) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const endDate = new Date(newDate);
+      endDate.setHours(23, 59, 59, 999); // Seçilen günün sonuna ayarla
+
+      const filtered = dashboardData.expiringPolicies.filter(
+        (policy: Policy) => {
+          const policyDate = new Date(policy.endDate);
+          policyDate.setHours(0, 0, 0, 0);
+          return policyDate >= today && policyDate <= endDate;
+        }
+      );
+      setFilteredPolicies(filtered);
+    }
+  };
 
   if (loading || !dashboardData) {
     return (
@@ -180,9 +239,25 @@ export default function Home() {
 
       <div>
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">
-            Vadesi Yaklaşan Poliçeler
-          </h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Vadesi Yaklaşan Poliçeler
+            </h2>
+            <div className="flex items-center gap-2">
+              <label htmlFor="endDate" className="text-sm text-gray-900">
+                Bitiş Tarihi:
+              </label>
+              <input
+                type="date"
+                id="endDate"
+                name="endDate"
+                min={new Date().toISOString().split("T")[0]}
+                value={selectedDate}
+                onChange={handleDateChange}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              />
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
@@ -205,28 +280,30 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {dashboardData.expiringPolicies.map((policy: Policy) => (
-                  <tr key={policy.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {policy.policyNumber}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {policy.customerName}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {policy.policyType}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Intl.NumberFormat("tr-TR", {
-                        style: "currency",
-                        currency: "TRY",
-                      }).format(policy.premium)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
-                      {new Date(policy.endDate).toLocaleDateString("tr-TR")}
-                    </td>
-                  </tr>
-                ))}
+                {(filteredPolicies || dashboardData.expiringPolicies).map(
+                  (policy: Policy) => (
+                    <tr key={policy.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {policy.policyNumber}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {policy.customerName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {policy.policyType}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {new Intl.NumberFormat("tr-TR", {
+                          style: "currency",
+                          currency: "TRY",
+                        }).format(policy.premium)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
+                        {new Date(policy.endDate).toLocaleDateString("tr-TR")}
+                      </td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
           </div>
