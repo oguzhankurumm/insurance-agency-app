@@ -48,8 +48,11 @@ export default function PoliciesPage() {
     try {
       const response = await fetch(`/api/policies/${policy.id}`);
       if (!response.ok) throw new Error("Poliçe detayları alınamadı");
-      const data = await response.json();
-      setSelectedPolicy(data);
+      const { data } = await response.json();
+      setSelectedPolicy({
+        ...data.policy,
+        accountingRecords: data.accountingRecords,
+      });
       setIsDetailModalOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bir hata oluştu");
@@ -165,7 +168,6 @@ export default function PoliciesPage() {
       if (!response.ok) throw new Error("Veriler alınamadı");
       const data = await response.json();
       setPolicies(data.data || []);
-      console.log("data", data.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bir hata oluştu");
     } finally {
@@ -405,23 +407,32 @@ export default function PoliciesPage() {
                   <div>
                     <p className="text-sm text-gray-900">Başlangıç Tarihi</p>
                     <p className="font-medium text-gray-900">
-                      {new Date(selectedPolicy.startDate).toLocaleDateString(
-                        "tr-TR"
-                      )}
+                      {selectedPolicy.startDate &&
+                      !isNaN(new Date(selectedPolicy.startDate).getTime())
+                        ? new Date(selectedPolicy.startDate).toLocaleDateString(
+                            "tr-TR"
+                          )
+                        : "Belirtilmemiş"}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-900">Bitiş Tarihi</p>
                     <p className="font-medium text-gray-900">
-                      {new Date(selectedPolicy.endDate).toLocaleDateString(
-                        "tr-TR"
-                      )}
+                      {selectedPolicy.endDate &&
+                      !isNaN(new Date(selectedPolicy.endDate).getTime())
+                        ? new Date(selectedPolicy.endDate).toLocaleDateString(
+                            "tr-TR"
+                          )
+                        : "Belirtilmemiş"}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-900">Prim</p>
                     <p className="font-medium text-gray-900">
-                      ₺{selectedPolicy.premium.toLocaleString()}
+                      ₺
+                      {selectedPolicy.premium
+                        ? selectedPolicy.premium.toLocaleString()
+                        : "0"}
                     </p>
                   </div>
                   <div>
@@ -454,7 +465,7 @@ export default function PoliciesPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {selectedPolicy.accountingRecords.map((record) => (
+                      {selectedPolicy.accountingRecords?.map((record) => (
                         <tr key={record.id}>
                           <td className="px-4 py-2 text-gray-900">
                             {new Date(
@@ -480,6 +491,17 @@ export default function PoliciesPage() {
                           </td>
                         </tr>
                       ))}
+                      {(!selectedPolicy.accountingRecords ||
+                        selectedPolicy.accountingRecords.length === 0) && (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="px-4 py-2 text-center text-gray-500"
+                          >
+                            Muhasebe kaydı bulunmamaktadır
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

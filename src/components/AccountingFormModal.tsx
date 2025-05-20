@@ -84,7 +84,7 @@ export default function AccountingFormModal({
               </label>
               <select
                 {...register("policyId")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md text-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">Poliçe Seçin</option>
                 {policies.map((policy) => (
@@ -108,7 +108,7 @@ export default function AccountingFormModal({
                 selected={transactionDate}
                 onChange={(date) => date && setValue("transactionDate", date)}
                 dateFormat="dd/MM/yyyy"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md text-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
               {errors.transactionDate && (
                 <p className="mt-1 text-sm text-red-600">
@@ -125,7 +125,8 @@ export default function AccountingFormModal({
                 type="number"
                 step="0.01"
                 {...register("amount", { valueAsNumber: true })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md text-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="Tutar giriniz..."
               />
               {errors.amount && (
                 <p className="mt-1 text-sm text-red-600">
@@ -140,7 +141,7 @@ export default function AccountingFormModal({
               </label>
               <select
                 {...register("type")}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md text-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">Tür Seçin</option>
                 <option value="Gelir">Gelir</option>
@@ -160,7 +161,8 @@ export default function AccountingFormModal({
               <textarea
                 {...register("description")}
                 rows={3}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="Açıklama giriniz..."
+                className="mt-1 block w-full rounded-md text-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
               {errors.description && (
                 <p className="mt-1 text-sm text-red-600">
