@@ -19,7 +19,7 @@ const NavBar = () => {
         <div className="flex items-center justify-between h-16">
           <div className="flex-shrink-0">
             <span className="text-white text-xl font-bold font-['Inter']">
-              Sigorta Acentesi
+              Yavuzer Sigorta
             </span>
           </div>
 

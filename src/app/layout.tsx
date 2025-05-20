@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Sigorta Acentesi",
+  title: "Yavuzer Sigorta",
   description: "Sigorta poliçeleri ve muhasebe yönetim sistemi",
 };
 
