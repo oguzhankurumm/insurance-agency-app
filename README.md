@@ -1,36 +1,119 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Insurance Agency Management System
+
+A modern, full-stack insurance agency management system built with Next.js, TypeScript, and Tailwind CSS. This application is available both as a web application and a desktop application using Electron.
+
+## Features
+
+- 📊 Dashboard with key performance metrics
+- 👥 Customer management system
+- 📝 Policy management and tracking
+- 💰 Premium calculations and billing
+- 📈 Sales and revenue analytics
+- 📱 Responsive design for all devices
+- 🖥️ Desktop application support (Windows, macOS, Linux)
+- 📄 PDF report generation
+- 📊 Data visualization with Chart.js
+- 📥 CSV export functionality
+
+## Tech Stack
+
+- **Frontend**: Next.js 15, TypeScript, Tailwind CSS
+- **UI Components**: Headless UI, Heroicons
+- **Form Handling**: React Hook Form, Yup
+- **Data Tables**: TanStack Table
+- **Database**: SQLite
+- **Desktop App**: Electron
+- **Charts**: Chart.js
+- **PDF Generation**: jsPDF
+- **Date Handling**: React DatePicker
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18.x or later
+- npm or yarn package manager
+
+### Installation
+
+1. Clone the repository:
 ```bash
+git clone https://github.com/yourusername/insurance-agency-app.git
+cd insurance-agency-app
+```
+
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Start the development server:
+```bash
+# For web application
 npm run dev
 # or
 yarn dev
+
+# For desktop application
+npm run electron-dev
 # or
-pnpm dev
-# or
-bun dev
+yarn electron-dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the web application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+insurance-agency-app/
+├── src/
+│   ├── app/           # Next.js app directory
+│   ├── components/    # Reusable UI components
+│   ├── lib/          # Utility functions
+│   ├── db/           # Database related code
+│   ├── hooks/        # Custom React hooks
+│   ├── types/        # TypeScript type definitions
+│   ├── validations/  # Form validation schemas
+│   └── scripts/      # Utility scripts
+├── electron/         # Electron configuration
+├── public/          # Static assets
+└── insurance.db     # SQLite database
+```
 
-## Learn More
+## Available Scripts
 
-To learn more about Next.js, take a look at the following resources:
+- `yarn dev` - Start the Next.js development server
+- `yarn build` - Build the Next.js application
+- `yarn start` - Start the production server
+- `yarn electron-dev` - Start the Electron development environment
+- `yarn electron-build` - Build the desktop application
+- `yarn electron-start` - Start the Electron application
+- `yarn seed` - Seed the database with initial data
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Building for Production
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Web Application
+```bash
+yarn build
+yarn start
+```
 
-## Deploy on Vercel
+### Desktop Application
+```bash
+yarn electron-build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This will create installers for:
+- Windows: NSIS installer and portable executable
+- macOS: DMG and ZIP
+- Linux: AppImage and DEB
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For support, please open an issue in the GitHub repository.
