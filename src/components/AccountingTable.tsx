@@ -6,18 +6,14 @@ import {
   createColumnHelper,
   flexRender,
 } from "@tanstack/react-table";
-import { PencilIcon, TrashIcon, EyeIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { AccountingRecord } from "@/types/accounting";
-import type { Policy } from "@/types/policy";
-import { useState } from "react";
-import PolicyFilesModal from "./PolicyFilesModal";
 
 interface AccountingTableProps {
   records: AccountingRecord[];
   onEdit: (record: AccountingRecord) => void;
   onDelete: (record: AccountingRecord) => void;
-  customers: { id: number; name: string }[];
-  policies: Policy[];
+  customers: { id: number; name: string; tcNumber: string }[];
 }
 
 const columnHelper = createColumnHelper<AccountingRecord>();
@@ -27,19 +23,7 @@ export default function AccountingTable({
   onEdit,
   onDelete,
   customers,
-  policies,
 }: AccountingTableProps) {
-  const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(null);
-  const [isFilesModalOpen, setIsFilesModalOpen] = useState(false);
-
-  const handleViewFiles = (record: AccountingRecord) => {
-    const policy = policies.find((p) => p.policyNumber === record.policyNumber);
-    if (policy) {
-      setSelectedPolicy(policy);
-      setIsFilesModalOpen(true);
-    }
-  };
-
   const columns = [
     {
       header: "Tarih",
@@ -51,17 +35,16 @@ export default function AccountingTable({
       header: "Müşteri",
       accessorKey: "customerName",
       cell: (info: { row: { original: AccountingRecord } }) => {
-        const policy = policies.find(
-          (p) => p.policyNumber === info.row.original.policyNumber
+        const customer = customers.find(
+          (c) => c.id === info.row.original.customerId
         );
-        const customer = policy
-          ? customers.find((c) => c.id === policy.customerId)
-          : null;
         return (
           <div>
-            <div>{customer?.name || "-"}</div>
+            <div className="font-medium">
+              {customer?.name || info.row.original.customerName || "-"}
+            </div>
             <div className="text-sm text-gray-500">
-              {info.row.original.policyNumber}
+              TC: {customer?.tcNumber || info.row.original.tcNumber || "-"}
             </div>
           </div>
         );
@@ -69,14 +52,9 @@ export default function AccountingTable({
     },
     {
       header: "Plaka No",
-      accessorKey: "policyPlateNumber",
-      cell: (info: { row: { original: AccountingRecord } }) => {
-        const policy = policies.find(
-          (p) => p.policyNumber === info.row.original.policyNumber
-        );
-
-        return policy?.plateNumber ?? "-";
-      },
+      accessorKey: "plateNumber",
+      cell: (info: { getValue: () => string | undefined }) =>
+        info.getValue() || "-",
     },
     {
       header: "Tür",
@@ -89,13 +67,23 @@ export default function AccountingTable({
               : "bg-red-100 text-red-800"
           }`}
         >
-          {info.getValue()}
+          {info.getValue() === "Gelir" ? "Alacak (+)" : "Borç (-)"}
         </span>
       ),
     },
     columnHelper.accessor("amount", {
       header: "Tutar",
-      cell: (info) => `₺${info.getValue().toLocaleString("tr-TR")}`,
+      cell: (info) => {
+        const record = info.row.original;
+        const sign = record.type === "Gelir" ? "+" : "-";
+        const colorClass =
+          record.type === "Gelir" ? "text-green-600" : "text-red-600";
+        return (
+          <span className={`font-medium ${colorClass}`}>
+            {sign}₺{info.getValue().toLocaleString("tr-TR")}
+          </span>
+        );
+      },
     }),
     columnHelper.accessor("description", {
       header: "Açıklama",
@@ -106,12 +94,6 @@ export default function AccountingTable({
       header: "İşlemler",
       cell: (info) => (
         <div className="flex items-center space-x-2">
-          <button
-            onClick={() => handleViewFiles(info.row.original)}
-            className="text-gray-600 hover:text-gray-800"
-          >
-            <EyeIcon className="h-5 w-5" />
-          </button>
           <button
             onClick={() => onEdit(info.row.original)}
             className="text-blue-600 hover:text-blue-800"
@@ -205,17 +187,6 @@ export default function AccountingTable({
           </div>
         </div>
       </div>
-
-      {selectedPolicy && (
-        <PolicyFilesModal
-          isOpen={isFilesModalOpen}
-          onClose={() => {
-            setIsFilesModalOpen(false);
-            setSelectedPolicy(null);
-          }}
-          policy={selectedPolicy}
-        />
-      )}
     </div>
   );
 }

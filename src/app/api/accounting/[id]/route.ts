@@ -1,11 +1,17 @@
-import { Accounting, dbGet, dbRun } from "@/db/database";
+import { getDb } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { AccountingFormData } from "@/types/accounting";
 
 export async function GET(request: Request, params: any) {
   try {
     const { id } = params.params;
-    const record = await dbGet<Accounting>(
-      "SELECT * FROM accounting WHERE id = ?",
+    const db = await getDb();
+
+    const record = await db.get(
+      `SELECT a.*, c.name as customerName, c.tcNumber
+       FROM accounting a
+       LEFT JOIN customers c ON a.customerId = c.id
+       WHERE a.id = ?`,
       [id]
     );
 
@@ -26,24 +32,32 @@ export async function GET(request: Request, params: any) {
 export async function PUT(request: Request, params: any) {
   try {
     const { id } = params.params;
-    const body = await request.json();
-    const { policyId, transactionDate, amount, type, description } = body;
+    const body: AccountingFormData = await request.json();
+    const {
+      customerId,
+      plateNumber,
+      transactionDate,
+      amount,
+      type,
+      description,
+    } = body;
 
-    // Poliçe ID'sinin geçerliliğini kontrol et
-    const policy = await dbGet<{ id: number }>(
-      "SELECT id FROM policies WHERE id = ?",
-      [policyId]
-    );
+    const db = await getDb();
 
-    if (!policy) {
+    // Müşteri ID'sinin geçerliliğini kontrol et
+    const customer = await db.get("SELECT id FROM customers WHERE id = ?", [
+      customerId,
+    ]);
+
+    if (!customer) {
       return NextResponse.json(
-        { error: "Geçersiz poliçe ID" },
+        { error: "Geçersiz müşteri ID" },
         { status: 400 }
       );
     }
 
     // Kaydın var olduğunu kontrol et
-    const existingRecord = await dbGet<Accounting>(
+    const existingRecord = await db.get(
       "SELECT id FROM accounting WHERE id = ?",
       [id]
     );
@@ -55,19 +69,31 @@ export async function PUT(request: Request, params: any) {
       );
     }
 
+    // transactionDate'i Date objesine çevir
+    const formattedDate = new Date(transactionDate).toISOString();
+
     // Kaydı güncelle
-    await dbRun(
+    await db.run(
       `UPDATE accounting 
-       SET policyId = ?, transactionDate = ?, amount = ?, type = ?, description = ?
+       SET customerId = ?, plateNumber = ?, transactionDate = ?, amount = ?, type = ?, description = ?
        WHERE id = ?`,
-      [policyId, transactionDate, amount, type, description, id]
+      [
+        customerId,
+        plateNumber || null,
+        formattedDate,
+        amount,
+        type,
+        description,
+        id,
+      ]
     );
 
     return NextResponse.json({
       data: {
         id,
-        policyId,
-        transactionDate,
+        customerId,
+        plateNumber,
+        transactionDate: formattedDate,
         amount,
         type,
         description,
@@ -85,11 +111,10 @@ export async function PUT(request: Request, params: any) {
 export async function DELETE(request: Request, params: any) {
   try {
     const { id } = params.params;
+    const db = await getDb();
+
     // Kaydın var olduğunu kontrol et
-    const record = await dbGet<Accounting>(
-      "SELECT id FROM accounting WHERE id = ?",
-      [id]
-    );
+    const record = await db.get("SELECT id FROM accounting WHERE id = ?", [id]);
 
     if (!record) {
       return NextResponse.json(
@@ -99,7 +124,7 @@ export async function DELETE(request: Request, params: any) {
     }
 
     // Kaydı sil
-    const result = await dbRun("DELETE FROM accounting WHERE id = ?", [id]);
+    const result = await db.run("DELETE FROM accounting WHERE id = ?", [id]);
 
     if (result.changes === 0) {
       return NextResponse.json({ error: "Kayıt silinemedi" }, { status: 500 });

@@ -1,23 +1,28 @@
 export interface AccountingRecord {
   id: number;
-  policyId: number;
-  policyNumber: string;
+  customerId: number;
+  plateNumber?: string;
   transactionDate: string;
   amount: number;
   type: "Gelir" | "Gider";
   description: string;
   createdAt: string;
+  customerName?: string;
+  tcNumber?: string;
+  status?: "Aktif" | "Deaktif";
 }
 
 export interface AccountingFilter {
-  policyId?: number;
+  customerId?: number;
   type?: "Gelir" | "Gider";
   startDate?: string;
   endDate?: string;
+  plateNumber?: string;
 }
 
 export interface AccountingFormData {
-  policyId: string;
+  customerId: string;
+  plateNumber?: string;
   transactionDate: Date;
   amount: number;
   type: "Gelir" | "Gider";
@@ -28,4 +33,20 @@ export interface AccountingSummary {
   totalIncome: number;
   totalExpense: number;
   netAmount: number;
+}
+
+export interface CustomerAccountingSummary {
+  customer: {
+    id: number;
+    name: string;
+    tcNumber: string;
+    phone: string;
+  };
+  totalBalance: number;
+  status: "Aktif" | "Deaktif";
+  plateTransactions: {
+    plateNumber: string;
+    transactions: AccountingRecord[];
+    balance: number;
+  }[];
 }

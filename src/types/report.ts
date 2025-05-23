@@ -6,7 +6,8 @@ export type ReportType =
   | "unpaid-payments"
   | "active-policies"
   | "expiring-policies"
-  | "customer-policies";
+  | "customer-policies"
+  | "customer-accounting";
 
 export interface ReportFilter {
   startDate?: Date;
@@ -87,6 +88,21 @@ export interface CustomerPoliciesReport {
   lastPolicyDate: string;
 }
 
+export interface CustomerAccountingReport {
+  customerId: number;
+  customerName: string;
+  tcNumber: string;
+  transactionId: number;
+  transactionDate: string;
+  amount: number;
+  type: string;
+  description: string;
+  policyNumber: string;
+  plateNumber: string;
+  policyType: string;
+  runningBalance: number;
+}
+
 export interface ReportParams {
   startDate?: string;
   endDate?: string;
@@ -101,12 +117,14 @@ export type ReportDataType =
   | UnpaidPaymentsReport
   | ActivePoliciesReport
   | ExpiringPoliciesReport
-  | CustomerPoliciesReport;
+  | CustomerPoliciesReport
+  | CustomerAccountingReport;
 
 export interface ReportData {
   type: ReportType;
   data: ReportDataType[];
   summary?: {
+    totalCustomers?: number;
     totalPolicies?: number;
     totalPremium?: number;
     totalIncome?: number;

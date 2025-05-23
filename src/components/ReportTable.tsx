@@ -38,6 +38,16 @@ export default function ReportTable({ data, type }: ReportTableProps) {
           { header: "Net", accessor: "netAmount" },
           { header: "Poliçe Sayısı", accessor: "policyCount" },
         ];
+      case "customer-accounting":
+        return [
+          { header: "Müşteri", accessor: "customerName" },
+          { header: "TC No", accessor: "tcNumber" },
+          { header: "Tarih", accessor: "transactionDate" },
+          { header: "Açıklama", accessor: "description" },
+          { header: "Tür", accessor: "type" },
+          { header: "Tutar", accessor: "amount" },
+          { header: "Bakiye", accessor: "runningBalance" },
+        ];
       default:
         return [];
     }
@@ -59,8 +69,11 @@ export default function ReportTable({ data, type }: ReportTableProps) {
       case "income":
       case "expense":
       case "netAmount":
+      case "amount":
+      case "runningBalance":
         return `₺${Number(value).toLocaleString("tr-TR")}`;
       case "status":
+      case "type":
         return String(value);
       default:
         return String(value);

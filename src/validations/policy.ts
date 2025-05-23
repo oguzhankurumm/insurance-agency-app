@@ -2,7 +2,7 @@ import * as yup from "yup";
 import { POLICY_TYPES, POLICY_STATUS } from "@/types/policy";
 
 export const policyFormSchema = yup.object().shape({
-  policyNumber: yup.string().required("Poliçe numarası zorunludur"),
+  policyNumber: yup.string().optional(),
   customerId: yup.number().required("Müşteri seçimi zorunludur"),
   customerName: yup.string().required("Müşteri adı zorunludur"),
   tcNumber: yup
@@ -34,7 +34,7 @@ export const policyFormSchema = yup.object().shape({
 }) as yup.ObjectSchema<PolicyFormSchema>;
 
 export type PolicyFormSchema = {
-  policyNumber: string;
+  policyNumber?: string;
   customerId: number;
   customerName: string;
   tcNumber: string;

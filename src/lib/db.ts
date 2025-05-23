@@ -30,6 +30,7 @@ export interface PolicyFile {
 export interface Customer {
   id: number;
   name: string;
+  tcNumber: string;
   email: string;
   phone: string;
   address: string;
@@ -64,10 +65,12 @@ export async function getDb(): Promise<Database> {
         CREATE TABLE IF NOT EXISTS customers (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
+          tcNumber TEXT NOT NULL,
           email TEXT,
           phone TEXT,
           address TEXT,
-          createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS policies (
@@ -106,6 +109,17 @@ export async function getDb(): Promise<Database> {
           FOREIGN KEY (policyId) REFERENCES policies(id)
         );
       `);
+
+      // Existing customers table için tcNumber alanını ekle
+      try {
+        await db.exec(`ALTER TABLE customers ADD COLUMN tcNumber TEXT`);
+        await db.exec(
+          `ALTER TABLE customers ADD COLUMN updatedAt TEXT DEFAULT CURRENT_TIMESTAMP`
+        );
+      } catch (error) {
+        // Columns already exist, ignore error
+        console.log("Tablolar zaten güncellenmiş:", error);
+      }
 
       // Tablo yapısını kontrol et
       const tableInfo = await db.all("PRAGMA table_info(policy_files)");

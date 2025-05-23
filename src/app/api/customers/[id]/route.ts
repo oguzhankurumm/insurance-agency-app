@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 interface Customer {
   id: number;
   name: string;
+  tcNumber: string;
   email: string;
   phone: string;
   address: string;
@@ -53,7 +54,7 @@ export async function PUT(request: Request, params: any) {
   try {
     const { id } = params.params;
     const data = await request.json();
-    const { name, email, phone, address } = data;
+    const { name, tcNumber, email, phone, address } = data;
 
     // Müşterinin var olduğunu kontrol et
     const customer = await dbGet<Customer>(
@@ -72,12 +73,13 @@ export async function PUT(request: Request, params: any) {
     await dbRun(
       `UPDATE customers SET
         name = ?,
+        tcNumber = ?,
         email = ?,
         phone = ?,
         address = ?,
         updatedAt = datetime('now')
       WHERE id = ?`,
-      [name, email, phone, address, id]
+      [name, tcNumber, email, phone, address, id]
     );
 
     // Güncellenmiş müşteriyi getir

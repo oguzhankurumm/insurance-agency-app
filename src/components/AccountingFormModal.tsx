@@ -7,7 +7,8 @@ import "react-datepicker/dist/react-datepicker.css";
 import { AccountingFormData, AccountingRecord } from "@/types/accounting";
 
 const schema = yup.object({
-  policyId: yup.string().required("Poliçe seçimi zorunludur"),
+  customerId: yup.string().required("Müşteri seçimi zorunludur"),
+  plateNumber: yup.string(),
   transactionDate: yup.date().required("Tarih seçimi zorunludur"),
   amount: yup
     .number()
@@ -25,7 +26,7 @@ interface AccountingFormModalProps {
   onClose: () => void;
   onSubmit: (data: AccountingFormData) => void;
   initialData?: AccountingRecord | null;
-  policies: { id: string; policyNumber: string; customerName: string }[];
+  customers: { id: number; name: string; tcNumber: string }[];
 }
 
 export default function AccountingFormModal({
@@ -33,16 +34,17 @@ export default function AccountingFormModal({
   onClose,
   onSubmit,
   initialData,
-  policies,
+  customers,
 }: AccountingFormModalProps) {
   const defaultValues = initialData
     ? {
         ...initialData,
-        policyId: initialData.policyId.toString(),
+        customerId: initialData.customerId.toString(),
         transactionDate: new Date(initialData.transactionDate),
       }
     : {
-        policyId: "",
+        customerId: "",
+        plateNumber: "",
         transactionDate: new Date(),
         amount: 0,
         type: "Gelir" as const,
@@ -57,7 +59,7 @@ export default function AccountingFormModal({
     formState: { errors },
     reset,
   } = useForm<AccountingFormData>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(schema) as any,
     defaultValues,
   });
 
@@ -80,22 +82,39 @@ export default function AccountingFormModal({
           <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Poliçe
+                Müşteri
               </label>
               <select
-                {...register("policyId")}
+                {...register("customerId")}
                 className="mt-1 block w-full rounded-md text-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
-                <option value="">Poliçe Seçin</option>
-                {policies.map((policy) => (
-                  <option key={policy.id} value={policy.id}>
-                    {policy.policyNumber} ({policy.customerName})
+                <option value="">Müşteri Seçin</option>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name} ({customer.tcNumber})
                   </option>
                 ))}
               </select>
-              {errors.policyId && (
+              {errors.customerId && (
                 <p className="mt-1 text-sm text-red-600">
-                  {errors.policyId.message}
+                  {errors.customerId.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Plaka Numarası (Opsiyonel)
+              </label>
+              <input
+                type="text"
+                {...register("plateNumber")}
+                className="mt-1 block w-full rounded-md text-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="Örn: 34AA34"
+              />
+              {errors.plateNumber && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.plateNumber.message}
                 </p>
               )}
             </div>
@@ -145,8 +164,8 @@ export default function AccountingFormModal({
                 className="mt-1 block w-full rounded-md text-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">Tür Seçin</option>
-                <option value="Gelir">Gelir</option>
-                <option value="Gider">Gider</option>
+                <option value="Gelir">Gelir (+)</option>
+                <option value="Gider">Gider (-)</option>
               </select>
               {errors.type && (
                 <p className="mt-1 text-sm text-red-600">

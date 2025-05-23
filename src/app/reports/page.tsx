@@ -6,9 +6,13 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { ReportType, ReportFilter, ReportData } from "@/types/report";
+import {
+  ReportType,
+  ReportFilter,
+  ReportData,
+  CustomerAccountingReport,
+} from "@/types/report";
 import ReportTable from "@/components/ReportTable";
-import ReportChart from "@/components/ReportChart";
 
 export default function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType | "">("");
@@ -16,6 +20,25 @@ export default function ReportsPage() {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [customers, setCustomers] = useState<
+    { id: number; name: string; tcNumber: string }[]
+  >([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch("/api/customers");
+      if (!response.ok) throw new Error("Müşteriler alınamadı");
+      const data = await response.json();
+      setCustomers(data.data || []);
+    } catch (error) {
+      console.error("Müşteriler alınırken hata:", error);
+    }
+  };
 
   const fetchReport = useCallback(async () => {
     try {
@@ -35,9 +58,12 @@ export default function ReportsPage() {
       if (filter.customerName) {
         queryParams.append("customerName", filter.customerName);
       }
+      if (selectedCustomerId) {
+        queryParams.append("customerId", selectedCustomerId);
+      }
 
       console.log(
-        "Fetching report:",
+        "🚀 API Request:",
         reportType,
         "with params:",
         queryParams.toString()
@@ -49,6 +75,7 @@ export default function ReportsPage() {
       if (!response.ok) throw new Error("Rapor alınamadı");
 
       const data = await response.json();
+
       setReportData(data);
     } catch (err) {
       console.error("Error fetching report:", err);
@@ -56,7 +83,7 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [reportType, filter]);
+  }, [reportType, filter, selectedCustomerId]);
 
   useEffect(() => {
     if (reportType) {
@@ -184,7 +211,7 @@ export default function ReportsPage() {
         {/* Rapor Seçimi */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-900 mb-2">
               Rapor Türü
             </label>
             <select
@@ -205,38 +232,63 @@ export default function ReportsPage() {
               <optgroup label="Muhasebe Raporları">
                 <option value="monthly">Aylık Gelir-Gider</option>
                 <option value="yearly">Yıllık Gelir-Gider</option>
+                <option value="customer-accounting">
+                  Müşteri Muhasebe Raporu
+                </option>
               </optgroup>
             </select>
           </div>
 
-          {/* Filtreler */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Müşteri Seçimi - Sadece müşteri bazlı raporlarda göster */}
+          {(reportType === "customer-accounting" ||
+            reportType === "customer-policies") && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Başlangıç Tarihi
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Müşteri Seçin
               </label>
-              <DatePicker
-                selected={filter.startDate}
-                onChange={(date: Date | null) =>
-                  setFilter({ ...filter, startDate: date || undefined })
-                }
-                dateFormat="dd/MM/yyyy"
+              <select
+                value={selectedCustomerId}
+                onChange={(e) => setSelectedCustomerId(e.target.value)}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
-              />
+              >
+                <option value="">Tüm Müşteriler</option>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id.toString()}>
+                    {customer.name} - {customer.tcNumber}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Bitiş Tarihi
-              </label>
-              <DatePicker
-                selected={filter.endDate}
-                onChange={(date: Date | null) =>
-                  setFilter({ ...filter, endDate: date || undefined })
-                }
-                dateFormat="dd/MM/yyyy"
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
-              />
-            </div>
+          )}
+        </div>
+
+        {/* Filtreler */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Başlangıç Tarihi
+            </label>
+            <DatePicker
+              selected={filter.startDate}
+              onChange={(date: Date | null) =>
+                setFilter({ ...filter, startDate: date || undefined })
+              }
+              dateFormat="dd/MM/yyyy"
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Bitiş Tarihi
+            </label>
+            <DatePicker
+              selected={filter.endDate}
+              onChange={(date: Date | null) =>
+                setFilter({ ...filter, endDate: date || undefined })
+              }
+              dateFormat="dd/MM/yyyy"
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
+            />
           </div>
         </div>
 
@@ -256,20 +308,22 @@ export default function ReportsPage() {
         {/* Rapor İçeriği */}
         {reportData && !loading && (
           <>
-            <div className="mb-6">
-              <ReportTable data={reportData.data} type={reportData.type} />
-            </div>
-
-            <div className="mb-6">
-              <ReportChart data={reportData.data} type={reportData.type} />
-            </div>
-
-            {/* Özet Bilgiler */}
+            {/* Özet Bilgiler - En üstte göster */}
             {reportData.summary && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {reportData.summary.totalCustomers !== undefined && (
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <h3 className="text-sm font-medium text-blue-700">
+                      Toplam Müşteri
+                    </h3>
+                    <p className="mt-1 text-2xl font-semibold text-blue-900">
+                      {reportData.summary.totalCustomers}
+                    </p>
+                  </div>
+                )}
                 {reportData.summary.totalPolicies !== undefined && (
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="text-sm font-medium text-gray-500">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h3 className="text-sm font-medium text-gray-700">
                       Toplam Poliçe
                     </h3>
                     <p className="mt-1 text-2xl font-semibold text-gray-900">
@@ -278,8 +332,8 @@ export default function ReportsPage() {
                   </div>
                 )}
                 {reportData.summary.totalIncome !== undefined && (
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h3 className="text-sm font-medium text-green-500">
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <h3 className="text-sm font-medium text-green-700">
                       Toplam Gelir
                     </h3>
                     <p className="mt-1 text-2xl font-semibold text-green-900">
@@ -288,8 +342,8 @@ export default function ReportsPage() {
                   </div>
                 )}
                 {reportData.summary.totalExpense !== undefined && (
-                  <div className="bg-red-50 p-4 rounded-lg">
-                    <h3 className="text-sm font-medium text-red-500">
+                  <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                    <h3 className="text-sm font-medium text-red-700">
                       Toplam Gider
                     </h3>
                     <p className="mt-1 text-2xl font-semibold text-red-900">
@@ -297,11 +351,244 @@ export default function ReportsPage() {
                     </p>
                   </div>
                 )}
+                {reportData.summary.netAmount !== undefined && (
+                  <div
+                    className={`p-4 rounded-lg border ${
+                      reportData.summary.netAmount >= 0
+                        ? "bg-green-50 border-green-200"
+                        : "bg-red-50 border-red-200"
+                    }`}
+                  >
+                    <h3
+                      className={`text-sm font-medium ${
+                        reportData.summary.netAmount >= 0
+                          ? "text-green-700"
+                          : "text-red-700"
+                      }`}
+                    >
+                      Net Tutar
+                    </h3>
+                    <p
+                      className={`mt-1 text-2xl font-semibold ${
+                        reportData.summary.netAmount >= 0
+                          ? "text-green-900"
+                          : "text-red-900"
+                      }`}
+                    >
+                      ₺{reportData.summary.netAmount.toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Müşteri Muhasebe Raporu için Özel Görünüm */}
+            {reportType === "customer-accounting" ? (
+              <div className="space-y-6">
+                {/* Müşteri bazında grupla */}
+                {(() => {
+                  interface CustomerGroup {
+                    customer: {
+                      id: number;
+                      name: string;
+                      tcNumber: string;
+                    };
+                    transactions: CustomerAccountingReport[];
+                  }
+
+                  const groupedData = (
+                    reportData.data as CustomerAccountingReport[]
+                  ).reduce(
+                    (
+                      acc: Record<number, CustomerGroup>,
+                      item: CustomerAccountingReport
+                    ) => {
+                      const customerId = item.customerId;
+                      if (!acc[customerId]) {
+                        acc[customerId] = {
+                          customer: {
+                            id: item.customerId,
+                            name: item.customerName,
+                            tcNumber: item.tcNumber,
+                          },
+                          transactions: [],
+                        };
+                      }
+                      if (item.transactionId) {
+                        acc[customerId].transactions.push(item);
+                      }
+                      return acc;
+                    },
+                    {}
+                  );
+
+                  return Object.values(groupedData).map(
+                    (customerGroup: CustomerGroup) => (
+                      <div
+                        key={customerGroup.customer.id}
+                        className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden"
+                      >
+                        {/* Müşteri Başlığı */}
+                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                {customerGroup.customer.name}
+                              </h3>
+                              <p className="text-sm text-gray-600">
+                                TC: {customerGroup.customer.tcNumber}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm text-gray-600">
+                                Toplam İşlem:{" "}
+                                {customerGroup.transactions.length}
+                              </p>
+                              <p
+                                className={`text-lg font-semibold ${
+                                  customerGroup.transactions.reduce(
+                                    (
+                                      total: number,
+                                      t: CustomerAccountingReport
+                                    ) =>
+                                      total +
+                                      (t.type === "Gelir"
+                                        ? t.amount
+                                        : -t.amount),
+                                    0
+                                  ) >= 0
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                ₺
+                                {customerGroup.transactions
+                                  .reduce(
+                                    (
+                                      total: number,
+                                      t: CustomerAccountingReport
+                                    ) =>
+                                      total +
+                                      (t.type === "Gelir"
+                                        ? t.amount
+                                        : -t.amount),
+                                    0
+                                  )
+                                  .toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* İşlemler Tablosu */}
+                        {customerGroup.transactions.length > 0 ? (
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full">
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase">
+                                    Tarih
+                                  </th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase">
+                                    Açıklama
+                                  </th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase">
+                                    Poliçe No
+                                  </th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase">
+                                    Plaka
+                                  </th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase">
+                                    Tür
+                                  </th>
+                                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-900 uppercase">
+                                    Tutar
+                                  </th>
+                                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-900 uppercase">
+                                    Bakiye
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200">
+                                {customerGroup.transactions.map(
+                                  (
+                                    transaction: CustomerAccountingReport,
+                                    idx: number
+                                  ) => (
+                                    <tr
+                                      key={
+                                        transaction.transactionId ||
+                                        `transaction-${idx}`
+                                      }
+                                      className="hover:bg-gray-50"
+                                    >
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {new Date(
+                                          transaction.transactionDate
+                                        ).toLocaleDateString()}
+                                      </td>
+                                      <td className="px-6 py-4 text-sm text-gray-900">
+                                        {transaction.description}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {transaction.policyNumber || "-"}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {transaction.plateNumber || "-"}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap">
+                                        <span
+                                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                            transaction.type === "Gelir"
+                                              ? "bg-green-100 text-green-800"
+                                              : "bg-red-100 text-red-800"
+                                          }`}
+                                        >
+                                          {transaction.type}
+                                        </span>
+                                      </td>
+                                      <td
+                                        className={`px-6 py-4 whitespace-nowrap text-sm text-right font-semibold ${
+                                          transaction.type === "Gelir"
+                                            ? "text-green-600"
+                                            : "text-red-600"
+                                        }`}
+                                      >
+                                        {transaction.type === "Gelir"
+                                          ? "+"
+                                          : "-"}
+                                        ₺{transaction.amount.toLocaleString()}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
+                                        ₺
+                                        {transaction.runningBalance?.toLocaleString() ||
+                                          "0"}
+                                      </td>
+                                    </tr>
+                                  )
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="p-6 text-center text-gray-500">
+                            Bu müşteri için işlem kaydı bulunamadı.
+                          </div>
+                        )}
+                      </div>
+                    )
+                  );
+                })()}
+              </div>
+            ) : (
+              /* Diğer rapor türleri için standart tablo */
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <ReportTable data={reportData.data} type={reportData.type} />
               </div>
             )}
 
             {/* Dışa Aktarma Butonları */}
-            <div className="flex justify-end gap-4">
+            <div className="flex justify-end gap-4 mt-6">
               {handleExportCSV()}
               <button
                 onClick={handleExportPDF}

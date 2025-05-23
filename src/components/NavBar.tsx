@@ -9,6 +9,7 @@ const NavBar = () => {
   const menuItems = [
     { name: "Ana Sayfa", path: "/" },
     { name: "Poliçeler", path: "/policies" },
+    { name: "Müşteriler", path: "/customers" },
     { name: "Muhasebe", path: "/accounting" },
     { name: "Raporlar", path: "/reports" },
   ];

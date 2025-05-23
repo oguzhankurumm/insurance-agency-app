@@ -6,23 +6,29 @@ export async function GET(request: Request) {
   try {
     const db = await getDb();
     const { searchParams } = new URL(request.url);
-    const policyId = searchParams.get("policyId");
+    const customerId = searchParams.get("customerId");
+    const plateNumber = searchParams.get("plateNumber");
     const type = searchParams.get("type");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const search = searchParams.get("search");
 
     let query = `
-      SELECT a.*, p.policyNumber
+      SELECT a.*, c.name as customerName, c.tcNumber
       FROM accounting a
-      LEFT JOIN policies p ON a.policyId = p.id
+      LEFT JOIN customers c ON a.customerId = c.id
       WHERE 1=1
     `;
     const params: (string | number)[] = [];
 
-    if (policyId) {
-      query += " AND a.policyId = ?";
-      params.push(policyId);
+    if (customerId) {
+      query += " AND a.customerId = ?";
+      params.push(customerId);
+    }
+
+    if (plateNumber) {
+      query += " AND a.plateNumber = ?";
+      params.push(plateNumber);
     }
 
     if (type) {
@@ -41,14 +47,15 @@ export async function GET(request: Request) {
     }
 
     if (search) {
-      query += " AND (a.description LIKE ? OR p.policyNumber LIKE ?)";
-      params.push(`%${search}%`, `%${search}%`);
+      query +=
+        " AND (a.description LIKE ? OR c.name LIKE ? OR c.tcNumber LIKE ? OR a.plateNumber LIKE ?)";
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     query += " ORDER BY a.transactionDate DESC";
 
     const records = await db.all(query, params);
-    return NextResponse.json(records);
+    return NextResponse.json({ data: records });
   } catch (error) {
     console.error("Error fetching accounting records:", error);
     return NextResponse.json({ error: "Kayıtlar alınamadı" }, { status: 500 });
@@ -63,28 +70,30 @@ export async function POST(request: Request) {
     // transactionDate'i Date objesine çevir
     const transactionDate = new Date(data.transactionDate);
 
-    // Poliçe kontrolü
-    const policy = await db.get("SELECT id FROM policies WHERE id = ?", [
-      data.policyId,
+    // Müşteri kontrolü
+    const customer = await db.get("SELECT id FROM customers WHERE id = ?", [
+      data.customerId,
     ]);
 
-    if (!policy) {
+    if (!customer) {
       return NextResponse.json(
-        { error: "Geçersiz poliçe ID" },
+        { error: "Geçersiz müşteri ID" },
         { status: 400 }
       );
     }
 
     const result = await db.run(
       `INSERT INTO accounting (
-        policyId,
+        customerId,
+        plateNumber,
         transactionDate,
         amount,
         type,
         description
-      ) VALUES (?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        data.policyId,
+        data.customerId,
+        data.plateNumber || null,
         transactionDate.toISOString(),
         data.amount,
         data.type,

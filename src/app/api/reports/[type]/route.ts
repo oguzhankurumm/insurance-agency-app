@@ -1,33 +1,27 @@
 import { NextResponse } from "next/server";
-import { dbAll } from "@/db/database";
-import type {
-  ReportType,
-  ReportParams,
-  MonthlyReport,
-  YearlyReport,
-  PolicyTypeReport,
-  CustomerReport,
-  UnpaidPaymentsReport,
-  ActivePoliciesReport,
-  ExpiringPoliciesReport,
-  CustomerPoliciesReport,
-} from "@/types/report";
+import { getDb } from "@/lib/db";
+import type { ReportType, ReportParams } from "@/types/report";
 
-export async function GET(request: Request, params: any) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ type: ReportType }> }
+) {
   try {
-    const { type } = params.params as { type: ReportType };
+    const { type } = await params;
     const { searchParams } = new URL(request.url);
     const queryParams: ReportParams = {
       startDate: searchParams.get("startDate") || undefined,
       endDate: searchParams.get("endDate") || undefined,
       days: searchParams.get("days") || "30",
     };
+    const customerId = searchParams.get("customerId");
+    const db = await getDb();
 
     let dateFilter = "";
     const dateParams: string[] = [];
 
     if (queryParams.startDate && queryParams.endDate) {
-      dateFilter = "AND transactionDate BETWEEN ? AND ?";
+      dateFilter = "AND a.transactionDate BETWEEN ? AND ?";
       dateParams.push(queryParams.startDate, queryParams.endDate);
     }
 
@@ -36,13 +30,13 @@ export async function GET(request: Request, params: any) {
         const query = `
           WITH monthly_totals AS (
             SELECT 
-              strftime('%Y-%m', transactionDate) as month,
-              SUM(CASE WHEN type = 'Gelir' THEN amount ELSE 0 END) as income,
-              SUM(CASE WHEN type = 'Gider' THEN amount ELSE 0 END) as expense,
-              COUNT(DISTINCT policyId) as policyCount
-            FROM accounting
+              strftime('%Y-%m', a.transactionDate) as month,
+              SUM(CASE WHEN a.type = 'Gelir' THEN a.amount ELSE 0 END) as income,
+              SUM(CASE WHEN a.type = 'Gider' THEN a.amount ELSE 0 END) as expense,
+              COUNT(DISTINCT a.customerId) as customerCount
+            FROM accounting a
             WHERE 1=1 ${dateFilter}
-            GROUP BY strftime('%Y-%m', transactionDate)
+            GROUP BY strftime('%Y-%m', a.transactionDate)
             ORDER BY month DESC
           )
           SELECT 
@@ -50,25 +44,25 @@ export async function GET(request: Request, params: any) {
             income,
             expense,
             (income - expense) as netAmount,
-            policyCount
+            customerCount
           FROM monthly_totals
         `;
 
-        const report = await dbAll<MonthlyReport>(query, dateParams);
-        return NextResponse.json({ data: report });
+        const report = await db.all(query, dateParams);
+        return NextResponse.json({ type, data: report });
       }
 
       case "yearly": {
         const query = `
           WITH yearly_totals AS (
             SELECT 
-              strftime('%Y', transactionDate) as year,
-              SUM(CASE WHEN type = 'Gelir' THEN amount ELSE 0 END) as income,
-              SUM(CASE WHEN type = 'Gider' THEN amount ELSE 0 END) as expense,
-              COUNT(DISTINCT policyId) as policyCount
-            FROM accounting
+              strftime('%Y', a.transactionDate) as year,
+              SUM(CASE WHEN a.type = 'Gelir' THEN a.amount ELSE 0 END) as income,
+              SUM(CASE WHEN a.type = 'Gider' THEN a.amount ELSE 0 END) as expense,
+              COUNT(DISTINCT a.customerId) as customerCount
+            FROM accounting a
             WHERE 1=1 ${dateFilter}
-            GROUP BY strftime('%Y', transactionDate)
+            GROUP BY strftime('%Y', a.transactionDate)
             ORDER BY year DESC
           )
           SELECT 
@@ -76,12 +70,12 @@ export async function GET(request: Request, params: any) {
             income,
             expense,
             (income - expense) as netAmount,
-            policyCount
+            customerCount
           FROM yearly_totals
         `;
 
-        const report = await dbAll<YearlyReport>(query, dateParams);
-        return NextResponse.json({ data: report });
+        const report = await db.all(query, dateParams);
+        return NextResponse.json({ type, data: report });
       }
 
       case "policy-type": {
@@ -93,7 +87,8 @@ export async function GET(request: Request, params: any) {
               SUM(CASE WHEN a.type = 'Gider' THEN a.amount ELSE 0 END) as expense,
               COUNT(DISTINCT p.id) as policyCount
             FROM policies p
-            LEFT JOIN accounting a ON p.id = a.policyId
+            JOIN customers c ON p.customerId = c.id
+            LEFT JOIN accounting a ON a.customerId = c.id
             WHERE 1=1 ${dateFilter}
             GROUP BY p.policyType
           )
@@ -107,27 +102,30 @@ export async function GET(request: Request, params: any) {
           ORDER BY netAmount DESC
         `;
 
-        const report = await dbAll<PolicyTypeReport>(query, dateParams);
-        return NextResponse.json({ data: report });
+        const report = await db.all(query, dateParams);
+        return NextResponse.json({ type, data: report });
       }
 
       case "customer": {
         const query = `
           WITH customer_totals AS (
             SELECT 
-              p.customerId,
-              p.customerName,
+              c.id as customerId,
+              c.name as customerName,
+              c.tcNumber,
               SUM(CASE WHEN a.type = 'Gelir' THEN a.amount ELSE 0 END) as income,
               SUM(CASE WHEN a.type = 'Gider' THEN a.amount ELSE 0 END) as expense,
               COUNT(DISTINCT p.id) as policyCount
-            FROM policies p
-            LEFT JOIN accounting a ON p.id = a.policyId
+            FROM customers c
+            LEFT JOIN accounting a ON a.customerId = c.id
+            LEFT JOIN policies p ON p.customerId = c.id
             WHERE 1=1 ${dateFilter}
-            GROUP BY p.customerId, p.customerName
+            GROUP BY c.id, c.name, c.tcNumber
           )
           SELECT 
             customerId,
             customerName,
+            tcNumber,
             income,
             expense,
             (income - expense) as netAmount,
@@ -136,33 +134,38 @@ export async function GET(request: Request, params: any) {
           ORDER BY netAmount DESC
         `;
 
-        const report = await dbAll<CustomerReport>(query, dateParams);
-        return NextResponse.json({ data: report });
+        const report = await db.all(query, dateParams);
+        return NextResponse.json({ type, data: report });
       }
 
       case "unpaid-payments": {
+        // Müşteri bazlı borç-alacak hesaplaması
         const query = `
-          SELECT 
-            p.id as policyId,
-            p.policyNumber,
-            p.customerName,
-            a.transactionDate as dueDate,
-            a.amount,
-            julianday('now') - julianday(a.transactionDate) as daysPastDue
-          FROM policies p
-          JOIN accounting a ON p.id = a.policyId
-          WHERE a.type = 'Gelir'
-          AND a.amount > (
-            SELECT COALESCE(SUM(amount), 0)
-            FROM accounting
-            WHERE policyId = p.id
-            AND type = 'Gider'
+          WITH customer_balances AS (
+            SELECT 
+              c.id as customerId,
+              c.name as customerName,
+              c.tcNumber,
+              SUM(CASE WHEN a.type = 'Gelir' THEN a.amount ELSE -a.amount END) as balance,
+              MAX(a.transactionDate) as lastTransactionDate
+            FROM customers c
+            LEFT JOIN accounting a ON a.customerId = c.id
+            GROUP BY c.id, c.name, c.tcNumber
+            HAVING balance < 0
           )
+          SELECT 
+            customerId,
+            customerName,
+            tcNumber,
+            ABS(balance) as amount,
+            lastTransactionDate as dueDate,
+            julianday('now') - julianday(lastTransactionDate) as daysPastDue
+          FROM customer_balances
           ORDER BY daysPastDue DESC
         `;
 
-        const report = await dbAll<UnpaidPaymentsReport>(query, []);
-        return NextResponse.json({ data: report });
+        const report = await db.all(query, []);
+        return NextResponse.json({ type, data: report });
       }
 
       case "active-policies": {
@@ -175,15 +178,16 @@ export async function GET(request: Request, params: any) {
             endDate,
             premium,
             policyType,
-            status
+            status,
+            plateNumber
           FROM policies
           WHERE status = 'Aktif'
           AND endDate >= date('now')
           ORDER BY endDate ASC
         `;
 
-        const report = await dbAll<ActivePoliciesReport>(query, []);
-        return NextResponse.json({ data: report });
+        const report = await db.all(query, []);
+        return NextResponse.json({ type, data: report });
       }
 
       case "expiring-policies": {
@@ -195,7 +199,8 @@ export async function GET(request: Request, params: any) {
             endDate,
             julianday(endDate) - julianday('now') as daysUntilExpiry,
             premium,
-            policyType
+            policyType,
+            plateNumber
           FROM policies
           WHERE status = 'Aktif'
           AND endDate >= date('now')
@@ -203,10 +208,8 @@ export async function GET(request: Request, params: any) {
           ORDER BY endDate ASC
         `;
 
-        const report = await dbAll<ExpiringPoliciesReport>(query, [
-          queryParams.days || "30",
-        ]);
-        return NextResponse.json({ data: report });
+        const report = await db.all(query, [queryParams.days || "30"]);
+        return NextResponse.json({ type, data: report });
       }
 
       case "customer-policies": {
@@ -223,8 +226,80 @@ export async function GET(request: Request, params: any) {
           ORDER BY activePolicies DESC, totalPremium DESC
         `;
 
-        const report = await dbAll<CustomerPoliciesReport>(query, []);
-        return NextResponse.json({ data: report });
+        const report = await db.all(query, []);
+        return NextResponse.json({ type, data: report });
+      }
+
+      case "customer-accounting": {
+        let customerFilter = "";
+        const accountingParams = [...dateParams];
+
+        if (customerId) {
+          customerFilter = "AND c.id = ?";
+          accountingParams.push(customerId);
+        }
+
+        const query = `
+          SELECT 
+            c.id as customerId,
+            c.name as customerName,
+            c.tcNumber,
+            a.id as transactionId,
+            a.transactionDate,
+            a.amount,
+            a.type,
+            a.description,
+            a.plateNumber,
+            (
+              SELECT SUM(
+                CASE WHEN aa.type = 'Gelir' THEN aa.amount 
+                     ELSE -aa.amount 
+                END
+              )
+              FROM accounting aa
+              WHERE aa.customerId = c.id
+              AND aa.transactionDate <= a.transactionDate
+            ) as runningBalance
+          FROM customers c
+          LEFT JOIN accounting a ON a.customerId = c.id
+          WHERE 1=1 ${dateFilter} ${customerFilter}
+          ORDER BY c.name, a.transactionDate DESC
+        `;
+
+        const report = await db.all(query, accountingParams);
+
+        // Müşteri bazında özet bilgiler
+        const summaryQuery = `
+          SELECT 
+            COUNT(DISTINCT c.id) as totalCustomers,
+            SUM(CASE WHEN a.type = 'Gelir' THEN a.amount ELSE 0 END) as totalIncome,
+            SUM(CASE WHEN a.type = 'Gider' THEN a.amount ELSE 0 END) as totalExpense,
+            COUNT(DISTINCT a.id) as totalTransactions
+          FROM customers c
+          LEFT JOIN accounting a ON a.customerId = c.id
+          WHERE 1=1 ${dateFilter} ${customerFilter}
+        `;
+
+        const summaryResult = await db.all(summaryQuery, accountingParams);
+        const summary =
+          (summaryResult[0] as {
+            totalCustomers?: number;
+            totalIncome?: number;
+            totalExpense?: number;
+            totalTransactions?: number;
+          }) || {};
+
+        return NextResponse.json({
+          type,
+          data: report,
+          summary: {
+            totalCustomers: summary.totalCustomers || 0,
+            totalIncome: summary.totalIncome || 0,
+            totalExpense: summary.totalExpense || 0,
+            netAmount: (summary.totalIncome || 0) - (summary.totalExpense || 0),
+            totalTransactions: summary.totalTransactions || 0,
+          },
+        });
       }
 
       default:

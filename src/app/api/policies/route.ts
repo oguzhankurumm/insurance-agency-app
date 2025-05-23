@@ -2,6 +2,33 @@ import { NextResponse } from "next/server";
 import { dbAll, dbRun } from "@/db/database";
 import type { Policy, PolicyFile } from "@/lib/db";
 
+// Otomatik poliçe numarası oluşturma fonksiyonu
+async function generateUniquePolicyNumber(): Promise<string> {
+  const currentYear = new Date().getFullYear();
+  let isUnique = false;
+  let policyNumber = "";
+  let counter = 1;
+
+  while (!isUnique) {
+    // POL-2025-001 formatında numara oluştur
+    policyNumber = `POL-${currentYear}-${counter.toString().padStart(3, "0")}`;
+
+    // Benzersizlik kontrolü
+    const existingPolicy = await dbAll<Policy>(
+      "SELECT id FROM policies WHERE policyNumber = ?",
+      [policyNumber]
+    );
+
+    if (existingPolicy.length === 0) {
+      isUnique = true;
+    } else {
+      counter++;
+    }
+  }
+
+  return policyNumber;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -54,7 +81,6 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
     const {
-      policyNumber,
       customerId,
       customerName,
       tcNumber,
@@ -68,18 +94,8 @@ export async function POST(request: Request) {
       files,
     } = data;
 
-    // Poliçe numarasının benzersiz olduğunu kontrol et
-    const existingPolicy = await dbAll<Policy>(
-      "SELECT id FROM policies WHERE policyNumber = ?",
-      [policyNumber]
-    );
-
-    if (existingPolicy.length > 0) {
-      return NextResponse.json(
-        { error: "Bu poliçe numarası zaten kullanılıyor" },
-        { status: 400 }
-      );
-    }
+    // Otomatik poliçe numarası oluştur
+    const policyNumber = await generateUniquePolicyNumber();
 
     // Yeni poliçeyi ekle
     const result = await dbRun(

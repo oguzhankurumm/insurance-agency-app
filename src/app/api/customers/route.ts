@@ -12,9 +12,10 @@ export async function GET(request: Request) {
     const params: string[] = [];
 
     if (search) {
-      query += " WHERE name LIKE ? OR email LIKE ? OR phone LIKE ?";
+      query +=
+        " WHERE name LIKE ? OR email LIKE ? OR phone LIKE ? OR tcNumber LIKE ?";
       const searchPattern = `%${search}%`;
-      params.push(searchPattern, searchPattern, searchPattern);
+      params.push(searchPattern, searchPattern, searchPattern, searchPattern);
     }
 
     query += " ORDER BY name ASC";
@@ -37,10 +38,11 @@ export async function POST(request: Request) {
 
     const result = await db.run(
       `INSERT INTO customers (
-        name, email, phone, address, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?)`,
+        name, tcNumber, email, phone, address, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         data.name,
+        data.tcNumber,
         data.email,
         data.phone,
         data.address,

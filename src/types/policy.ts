@@ -42,7 +42,7 @@ export interface PolicyDetail extends Policy {
 }
 
 export interface PolicyFormData {
-  policyNumber: string;
+  policyNumber?: string;
   customerId: number;
   customerName: string;
   tcNumber: string;
