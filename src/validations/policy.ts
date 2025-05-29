@@ -2,7 +2,17 @@ import * as yup from "yup";
 import { POLICY_TYPES, POLICY_STATUS } from "@/types/policy";
 
 export const policyFormSchema = yup.object().shape({
-  policyNumber: yup.string().optional(),
+  policyNumber: yup
+    .string()
+    .optional()
+    .test(
+      "min-length",
+      "Poliçe numarası en az 3 karakter olmalıdır",
+      function (value) {
+        if (!value || value.trim() === "") return true; // Boş bırakılabilir
+        return value.trim().length >= 3;
+      }
+    ),
   customerId: yup.number().required("Müşteri seçimi zorunludur"),
   customerName: yup.string().required("Müşteri adı zorunludur"),
   tcNumber: yup

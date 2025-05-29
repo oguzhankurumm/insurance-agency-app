@@ -81,6 +81,7 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
     const {
+      policyNumber, // Manuel girilen poliçe numarasını al
       customerId,
       customerName,
       tcNumber,
@@ -94,8 +95,24 @@ export async function POST(request: Request) {
       files,
     } = data;
 
-    // Otomatik poliçe numarası oluştur
-    const policyNumber = await generateUniquePolicyNumber();
+    // Poliçe numarası kontrolü - eğer gönderilmişse kullan, yoksa otomatik oluştur
+    let finalPolicyNumber = policyNumber;
+    if (!finalPolicyNumber || finalPolicyNumber.trim() === "") {
+      finalPolicyNumber = await generateUniquePolicyNumber();
+    } else {
+      // Manuel girilen poliçe numarasının benzersizliğini kontrol et
+      const existingPolicy = await dbAll<Policy>(
+        "SELECT id FROM policies WHERE policyNumber = ?",
+        [finalPolicyNumber]
+      );
+
+      if (existingPolicy.length > 0) {
+        return NextResponse.json(
+          { error: "Bu poliçe numarası zaten kullanılıyor" },
+          { status: 400 }
+        );
+      }
+    }
 
     // Yeni poliçeyi ekle
     const result = await dbRun(
@@ -113,7 +130,7 @@ export async function POST(request: Request) {
         description
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        policyNumber,
+        finalPolicyNumber, // Güncellenmiş poliçe numarası
         customerId,
         customerName,
         tcNumber,

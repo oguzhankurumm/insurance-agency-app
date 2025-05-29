@@ -378,18 +378,20 @@ export default function PolicyFormModal({
                 <input
                   type="text"
                   {...register("policyNumber")}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 bg-gray-50"
+                  className={`w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 ${
+                    initialData ? "bg-gray-50" : ""
+                  }`}
                   placeholder={
                     initialData
                       ? "Mevcut poliçe numarası"
-                      : "Otomatik oluşturulacak (POL-2025-XXX)"
+                      : "Poliçe numarası girin (boş bırakılırsa otomatik oluşturulur)"
                   }
-                  readOnly
+                  readOnly={!!initialData}
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   {initialData
                     ? "Düzenleme sırasında poliçe numarası değiştirilemez"
-                    : "Poliçe numarası kayıt sırasında otomatik olarak oluşturulacaktır"}
+                    : "Poliçe numarasını kendiniz belirleyebilir veya boş bırakarak otomatik oluşturulmasını sağlayabilirsiniz"}
                 </p>
                 {errors.policyNumber && (
                   <p className="mt-1 text-sm text-red-600">
