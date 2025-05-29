@@ -76,6 +76,16 @@ export const POLICY_TYPES = [
   "Konut",
   "Sağlık",
   "Hayat",
+  "Seyahat",
+  "Ferdi Kaza",
+  "Emeklilik",
+  "Cep Telefonu",
+  "İş Yeri",
+  "Tarım",
+  "Evcil Hayvan",
+  "Deprem (DASK)",
+  "Motosiklet",
+  "Elektronik Eşya",
   "Diğer",
 ] as const;
 

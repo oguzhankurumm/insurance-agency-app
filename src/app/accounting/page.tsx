@@ -212,6 +212,42 @@ export default function AccountingPage() {
     }
   };
 
+  const handleCustomerDelete = async (customer: Customer) => {
+    if (
+      !window.confirm(
+        `${customer.name} müşterisini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/customers/${customer.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Müşteri silme işlemi başarısız");
+      }
+
+      await fetchCustomers();
+      setError(`${customer.name} müşterisi başarıyla silindi.`);
+
+      // 3 saniye sonra mesajı temizle
+      setTimeout(() => {
+        setError(null);
+      }, 3000);
+    } catch (error) {
+      console.error("Müşteri silinirken hata:", error);
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Müşteri silme işlemi başarısız"
+      );
+    }
+  };
+
   const handleCustomerSelect = (customer: Customer) => {
     setSelectedCustomer(customer);
     setShowCustomerDetail(true);
@@ -254,19 +290,24 @@ export default function AccountingPage() {
       : customerSummaries;
 
   if (error) {
+    const isSuccessMessage = error.includes("başarıyla");
     return (
       <div className="text-center p-4">
-        <p className="text-red-500">{error}</p>
-        <button
-          onClick={() => {
-            setError(null);
-            fetchRecords();
-            fetchCustomers();
-          }}
-          className="mt-2 text-blue-500 hover:text-blue-700"
-        >
-          Yeniden Dene
-        </button>
+        <p className={isSuccessMessage ? "text-green-600" : "text-red-500"}>
+          {error}
+        </p>
+        {!isSuccessMessage && (
+          <button
+            onClick={() => {
+              setError(null);
+              fetchRecords();
+              fetchCustomers();
+            }}
+            className="mt-2 text-blue-500 hover:text-blue-700"
+          >
+            Yeniden Dene
+          </button>
+        )}
       </div>
     );
   }
@@ -433,14 +474,24 @@ export default function AccountingPage() {
                           : "Bakiye Sıfır"}
                       </p>
                     </div>
-                    <button
-                      onClick={() =>
-                        handleCustomerSelect(summary.customer as Customer)
-                      }
-                      className="bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium py-2 px-4 rounded-lg text-sm"
-                    >
-                      Detay Görüntüle
-                    </button>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() =>
+                          handleCustomerSelect(summary.customer as Customer)
+                        }
+                        className="w-full bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium py-2 px-4 rounded-lg text-sm"
+                      >
+                        Detay Görüntüle
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleCustomerDelete(summary.customer as Customer)
+                        }
+                        className="w-full bg-red-100 hover:bg-red-200 text-red-700 font-medium py-2 px-4 rounded-lg text-sm"
+                      >
+                        Müşteriyi Sil
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
