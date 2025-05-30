@@ -46,6 +46,12 @@ export default function CustomersPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(
+    null
+  );
+  const [deleteError, setDeleteError] = useState<string>("");
+  const [deleteWithPolicies, setDeleteWithPolicies] = useState(false);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
@@ -184,6 +190,58 @@ export default function CustomersPage() {
       address: customer.address,
     });
     setIsEditModalOpen(true);
+  };
+
+  const openDeleteModal = (customer: Customer) => {
+    setCustomerToDelete(customer);
+    setDeleteError("");
+    setDeleteWithPolicies(false);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return;
+
+    try {
+      // Eğer poliçelerle birlikte silme seçilmişse, önce poliçeleri sil
+      if (deleteWithPolicies) {
+        // Müşterinin poliçelerini al
+        const customerResponse = await fetch(
+          `/api/customers/${customerToDelete.id}`
+        );
+        const customerResult = await customerResponse.json();
+
+        if (customerResult.data && customerResult.data.policies) {
+          // Her poliçeyi tek tek sil
+          for (const policy of customerResult.data.policies) {
+            await fetch(`/api/policies/${policy.id}`, {
+              method: "DELETE",
+            });
+          }
+        }
+      }
+
+      // Müşteriyi sil
+      const response = await fetch(`/api/customers/${customerToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setIsDeleteModalOpen(false);
+        setCustomerToDelete(null);
+        setDeleteError("");
+        setDeleteWithPolicies(false);
+        fetchCustomers();
+      } else {
+        // Hata durumunda kullanıcıya mesaj göster
+        setDeleteError(result.error || "Müşteri silinirken bir hata oluştu");
+      }
+    } catch (error) {
+      console.error("Müşteri silinirken hata:", error);
+      setDeleteError("Müşteri silinirken bir hata oluştu");
+    }
   };
 
   const calculateCustomerBalance = (accountingRecords: AccountingRecord[]) => {
@@ -349,6 +407,25 @@ export default function CustomersPage() {
                         />
                       </svg>
                       Düzenle
+                    </button>
+                    <button
+                      onClick={() => openDeleteModal(customer)}
+                      className="bg-red-100 hover:bg-red-200 text-red-700 font-medium py-2 px-4 rounded-lg flex items-center"
+                    >
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                      Sil
                     </button>
                   </div>
                 </div>
@@ -690,6 +767,82 @@ export default function CustomersPage() {
                       </p>
                     )}
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Müşteri Silme Onay Modal */}
+        {isDeleteModalOpen && customerToDelete && (
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-30 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+              <div className="p-6">
+                <div className="flex items-center mb-4">
+                  <svg
+                    className="w-6 h-6 text-red-600 mr-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                    />
+                  </svg>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Müşteriyi Sil
+                  </h2>
+                </div>
+                <p className="text-gray-600 mb-6">
+                  <strong>{customerToDelete.name}</strong> isimli müşteriyi
+                  silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                </p>
+
+                {/* Poliçelerle birlikte silme seçeneği */}
+                <div className="mb-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={deleteWithPolicies}
+                      onChange={(e) => setDeleteWithPolicies(e.target.checked)}
+                      className="mr-2 h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Bu müşteriye ait tüm poliçeleri de sil
+                    </span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1 ml-6">
+                    Bu seçenek işaretlenirse, müşteriye bağlı tüm poliçeler de
+                    silinecektir.
+                  </p>
+                </div>
+
+                {deleteError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                    {deleteError}
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleDeleteCustomer}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg"
+                  >
+                    Sil
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsDeleteModalOpen(false);
+                      setCustomerToDelete(null);
+                      setDeleteError("");
+                      setDeleteWithPolicies(false);
+                    }}
+                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg"
+                  >
+                    İptal
+                  </button>
                 </div>
               </div>
             </div>
