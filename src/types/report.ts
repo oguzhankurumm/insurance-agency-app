@@ -51,7 +51,6 @@ export interface CustomerReport {
 }
 
 export interface UnpaidPaymentsReport {
-  policyId: number;
   policyNumber: string;
   customerName: string;
   dueDate: string;

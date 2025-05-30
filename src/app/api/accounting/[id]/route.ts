@@ -2,9 +2,15 @@ import { getDb } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { AccountingFormData } from "@/types/accounting";
 
-export async function GET(request: Request, params: any) {
+interface RouteParams {
+  params: {
+    id: string;
+  };
+}
+
+export async function GET(request: Request, { params }: RouteParams) {
   try {
-    const { id } = params.params;
+    const { id } = params;
     const db = await getDb();
 
     const record = await db.get(
@@ -29,9 +35,9 @@ export async function GET(request: Request, params: any) {
   }
 }
 
-export async function PUT(request: Request, params: any) {
+export async function PUT(request: Request, { params }: RouteParams) {
   try {
-    const { id } = params.params;
+    const { id } = params;
     const body: AccountingFormData = await request.json();
     const {
       customerId,
@@ -108,9 +114,9 @@ export async function PUT(request: Request, params: any) {
   }
 }
 
-export async function DELETE(request: Request, params: any) {
+export async function DELETE(request: Request, { params }: RouteParams) {
   try {
-    const { id } = params.params;
+    const { id } = params;
     const db = await getDb();
 
     // Kaydın var olduğunu kontrol et

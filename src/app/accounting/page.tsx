@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import AccountingTable from "@/components/AccountingTable";
 import AccountingFormModal from "@/components/AccountingFormModal";
@@ -37,16 +37,7 @@ export default function AccountingPage() {
   const [showCustomerDetail, setShowCustomerDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchRecords();
-    fetchCustomers();
-  }, []);
-
-  useEffect(() => {
-    generateCustomerSummaries();
-  }, [records, customers]);
-
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     try {
       const response = await fetch("/api/accounting");
       if (!response.ok) throw new Error("Kayıtlar alınamadı");
@@ -56,9 +47,9 @@ export default function AccountingPage() {
       console.error("Kayıtlar alınırken hata:", error);
       setError("Kayıtlar alınamadı");
     }
-  };
+  }, []);
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     try {
       const response = await fetch("/api/customers");
       if (!response.ok) throw new Error("Müşteriler alınamadı");
@@ -68,9 +59,9 @@ export default function AccountingPage() {
       console.error("Müşteriler alınırken hata:", error);
       setError("Müşteriler alınamadı");
     }
-  };
+  }, []);
 
-  const generateCustomerSummaries = () => {
+  const generateCustomerSummaries = useCallback(() => {
     const summaries: CustomerAccountingSummary[] = customers.map((customer) => {
       const customerTransactions = records.filter(
         (record) => record.customerId === customer.id
@@ -121,7 +112,16 @@ export default function AccountingPage() {
     });
 
     setCustomerSummaries(summaries);
-  };
+  }, [records, customers]);
+
+  useEffect(() => {
+    fetchRecords();
+    fetchCustomers();
+  }, [fetchRecords, fetchCustomers]);
+
+  useEffect(() => {
+    generateCustomerSummaries();
+  }, [records, customers, generateCustomerSummaries]);
 
   // Tüm kayıtlar için özet hesapla
   const generateAllRecordsSummary = () => {
@@ -212,38 +212,57 @@ export default function AccountingPage() {
     }
   };
 
-  const handleCustomerDelete = async (customer: Customer) => {
+  const handleCustomerRecordsDelete = async (customer: Customer) => {
+    const customerRecords = records.filter(
+      (record) => record.customerId === customer.id
+    );
+
+    if (customerRecords.length === 0) {
+      setError("Bu müşteriye ait silinecek kayıt bulunmamaktadır.");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
     if (
       !window.confirm(
-        `${customer.name} müşterisini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`
+        `${customer.name} müşterisine ait ${customerRecords.length} adet muhasebe kaydını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`
       )
     ) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/customers/${customer.id}`, {
-        method: "DELETE",
-      });
+      // Tüm kayıtları tek tek sil
+      const deletePromises = customerRecords.map((record) =>
+        fetch(`/api/accounting/${record.id}`, {
+          method: "DELETE",
+        })
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Müşteri silme işlemi başarısız");
+      const responses = await Promise.all(deletePromises);
+
+      // Başarısız olan işlemleri kontrol et
+      const failedDeletes = responses.filter((response) => !response.ok);
+
+      if (failedDeletes.length > 0) {
+        throw new Error(`${failedDeletes.length} kayıt silinemedi`);
       }
 
-      await fetchCustomers();
-      setError(`${customer.name} müşterisi başarıyla silindi.`);
+      await fetchRecords();
+      setError(
+        `${customer.name} müşterisine ait ${customerRecords.length} adet kayıt başarıyla silindi.`
+      );
 
       // 3 saniye sonra mesajı temizle
       setTimeout(() => {
         setError(null);
       }, 3000);
     } catch (error) {
-      console.error("Müşteri silinirken hata:", error);
+      console.error("Kayıtlar silinirken hata:", error);
       setError(
         error instanceof Error
           ? error.message
-          : "Müşteri silme işlemi başarısız"
+          : "Kayıtlar silme işlemi başarısız"
       );
     }
   };
@@ -485,11 +504,13 @@ export default function AccountingPage() {
                       </button>
                       <button
                         onClick={() =>
-                          handleCustomerDelete(summary.customer as Customer)
+                          handleCustomerRecordsDelete(
+                            summary.customer as Customer
+                          )
                         }
                         className="w-full bg-red-100 hover:bg-red-200 text-red-700 font-medium py-2 px-4 rounded-lg text-sm"
                       >
-                        Müşteriyi Sil
+                        Kayıtları Sil
                       </button>
                     </div>
                   </div>

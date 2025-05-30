@@ -44,6 +44,14 @@ export default function PolicyFormModal({
   onSubmit,
   initialData,
 }: PolicyFormModalProps) {
+  // Default tarihler
+  const getDefaultDates = () => {
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setFullYear(startDate.getFullYear() + 1);
+    return { startDate, endDate };
+  };
+
   const {
     register,
     handleSubmit,
@@ -59,8 +67,8 @@ export default function PolicyFormModal({
       customerName: "",
       tcNumber: "",
       plateNumber: "",
-      startDate: new Date(),
-      endDate: new Date(),
+      startDate: getDefaultDates().startDate,
+      endDate: getDefaultDates().endDate,
       premium: 0,
       policyType: "" as (typeof POLICY_TYPES)[number],
       status: "Aktif",
@@ -168,8 +176,8 @@ export default function PolicyFormModal({
         customerName: "",
         tcNumber: "",
         plateNumber: "",
-        startDate: new Date(),
-        endDate: new Date(),
+        startDate: getDefaultDates().startDate,
+        endDate: getDefaultDates().endDate,
         premium: 0,
         policyType: "" as (typeof POLICY_TYPES)[number],
         status: "Aktif",
@@ -320,7 +328,7 @@ export default function PolicyFormModal({
       }
 
       console.log("Final form data gönderiliyor:", {
-        ...(initialData && { policyNumber: data.policyNumber }),
+        policyNumber: data.policyNumber,
         customerId: data.customerId,
         customerName: data.customerName,
         tcNumber: data.tcNumber,
@@ -336,7 +344,7 @@ export default function PolicyFormModal({
 
       // Sonra formu gönder
       await onSubmit({
-        ...(initialData && { policyNumber: data.policyNumber }),
+        policyNumber: data.policyNumber,
         customerId: data.customerId,
         customerName: data.customerName,
         tcNumber: data.tcNumber,

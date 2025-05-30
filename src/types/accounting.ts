@@ -21,7 +21,8 @@ export interface AccountingFilter {
 }
 
 export interface AccountingFormData {
-  customerId: string;
+  policyNumber: string;
+  customerId?: string;
   plateNumber?: string;
   transactionDate: Date;
   amount: number;

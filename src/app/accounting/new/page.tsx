@@ -10,7 +10,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { AccountingFormData } from "@/types/accounting";
 
 const schema = yup.object({
-  policyId: yup.string().required("Poliçe seçimi zorunludur"),
+  policyNumber: yup.string().required("Poliçe seçimi zorunludur"),
   transactionDate: yup.date().required("Tarih seçimi zorunludur"),
   amount: yup
     .number()
@@ -26,6 +26,8 @@ const schema = yup.object({
 interface Policy {
   id: string;
   policyNumber: string;
+  customerId: string;
+  plateNumber?: string;
 }
 
 export default function NewAccountingPage() {
@@ -68,10 +70,27 @@ export default function NewAccountingPage() {
 
   const onSubmit = async (data: AccountingFormData) => {
     try {
+      // Policy'den customer ID'yi al
+      const selectedPolicy = policies.find(
+        (p) => p.policyNumber === data.policyNumber
+      );
+      if (!selectedPolicy) {
+        throw new Error("Geçersiz poliçe seçimi");
+      }
+
+      const submissionData = {
+        customerId: selectedPolicy.customerId,
+        plateNumber: selectedPolicy.plateNumber,
+        transactionDate: data.transactionDate.toISOString(),
+        amount: data.amount,
+        type: data.type,
+        description: data.description,
+      };
+
       const response = await fetch("/api/accounting", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(submissionData),
       });
 
       if (!response.ok) throw new Error("Kayıt oluşturulamadı");
@@ -114,19 +133,19 @@ export default function NewAccountingPage() {
               Poliçe
             </label>
             <select
-              {...register("policyId")}
+              {...register("policyNumber")}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
             >
               <option value="">Poliçe Seçin</option>
               {policies.map((policy) => (
-                <option key={policy.id} value={policy.id}>
+                <option key={policy.id} value={policy.policyNumber}>
                   {policy.policyNumber}
                 </option>
               ))}
             </select>
-            {errors.policyId && (
+            {errors.policyNumber && (
               <p className="mt-1 text-sm text-red-600">
-                {errors.policyId.message}
+                {errors.policyNumber.message}
               </p>
             )}
           </div>
@@ -137,9 +156,11 @@ export default function NewAccountingPage() {
             </label>
             <DatePicker
               selected={transactionDate}
-              onChange={(date: Date | null) =>
-                date && setValue("transactionDate", date)
-              }
+              onChange={(date: Date | null) => {
+                if (date) {
+                  setValue("transactionDate", date);
+                }
+              }}
               dateFormat="dd/MM/yyyy"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
             />

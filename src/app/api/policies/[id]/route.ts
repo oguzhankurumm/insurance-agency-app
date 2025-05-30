@@ -3,23 +3,48 @@ import type { Policy, AccountingRecord, PolicyFile } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function GET(request: Request, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const db = await getDb();
 
-    // Poliçe bilgilerini al
-    const policy = await db.get<Policy>("SELECT * FROM policies WHERE id = ?", [
-      id,
-    ]);
+    // Poliçe bilgilerini müşteri bilgileriyle birlikte al
+    const policy = await db.get<Policy>(
+      `
+      SELECT 
+        p.*,
+        c.name as customerName,
+        c.tcNumber
+      FROM policies p 
+      LEFT JOIN customers c ON p.customerId = c.id 
+      WHERE p.id = ?
+    `,
+      [id]
+    );
 
     if (!policy) {
       return NextResponse.json({ error: "Poliçe bulunamadı" }, { status: 404 });
+    }
+
+    // Eğer customerName veya tcNumber null ise, customers tablosundan güncelle
+    if (!policy.customerName && policy.customerId) {
+      const customer = await db.get(
+        "SELECT name, tcNumber FROM customers WHERE id = ?",
+        [policy.customerId]
+      );
+      if (customer) {
+        await db.run(
+          "UPDATE policies SET customerName = ?, tcNumber = ? WHERE id = ?",
+          [customer.name, customer.tcNumber, id]
+        );
+        policy.customerName = customer.name;
+        policy.tcNumber = customer.tcNumber;
+      }
     }
 
     // Poliçeye ait dosyaları al
@@ -30,8 +55,8 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     // Poliçeye ait muhasebe kayıtlarını al
     const accountingRecords = await db.all<AccountingRecord>(
-      "SELECT * FROM accounting WHERE policyId = ? ORDER BY transactionDate DESC",
-      [id]
+      "SELECT * FROM accounting WHERE customerId = ? ORDER BY transactionDate DESC",
+      [policy.customerId]
     );
 
     return NextResponse.json({
@@ -54,7 +79,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
 export async function PUT(request: Request, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const data = await request.json();
     const db = await getDb();
 
@@ -63,6 +88,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       `UPDATE policies SET
         policyNumber = ?,
         customerId = ?,
+        customerName = ?,
         tcNumber = ?,
         plateNumber = ?,
         startDate = ?,
@@ -75,6 +101,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       [
         data.policyNumber,
         data.customerId,
+        data.customerName,
         data.tcNumber,
         data.plateNumber,
         data.startDate,
@@ -118,11 +145,20 @@ export async function PUT(request: Request, { params }: RouteParams) {
       }
     }
 
-    // Güncellenmiş poliçeyi getir
+    // Güncellenmiş poliçeyi müşteri bilgileriyle birlikte getir
     const updatedPolicy = await db.get<Policy>(
-      "SELECT * FROM policies WHERE id = ?",
+      `
+      SELECT 
+        p.*,
+        c.name as customerName,
+        c.tcNumber
+      FROM policies p 
+      LEFT JOIN customers c ON p.customerId = c.id 
+      WHERE p.id = ?
+    `,
       [id]
     );
+
     const policyFiles = await db.all<PolicyFile>(
       "SELECT * FROM policy_files WHERE policyId = ?",
       [id]
@@ -145,26 +181,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const db = await getDb();
 
-    // Poliçeye bağlı muhasebe kayıtlarını kontrol et
-    const accountingRecords = await db.all<AccountingRecord[]>(
-      "SELECT id FROM accounting WHERE policyId = ?",
-      [id]
-    );
-
-    if (accountingRecords && accountingRecords.length > 0) {
-      return NextResponse.json(
-        {
-          error:
-            "Bu poliçeye ait muhasebe kayıtları bulunmaktadır. Önce muhasebe kayıtlarını silmelisiniz.",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Poliçeyi sil
+    // Poliçeyi sil (dosyalar da otomatik silinecek foreign key cascade ile)
     const result = await db.run("DELETE FROM policies WHERE id = ?", [id]);
 
     if (result.changes === 0) {

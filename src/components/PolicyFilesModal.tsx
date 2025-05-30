@@ -4,7 +4,7 @@ import {
   ArrowUpTrayIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface PolicyFile {
   id: number;
@@ -36,13 +36,7 @@ export default function PolicyFilesModal({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchFiles();
-    }
-  }, [isOpen, policy.id]);
-
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -58,7 +52,13 @@ export default function PolicyFilesModal({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [policy.id]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchFiles();
+    }
+  }, [isOpen, policy.id, fetchFiles]);
 
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>

@@ -76,13 +76,16 @@ export async function getDb(): Promise<Database> {
         CREATE TABLE IF NOT EXISTS policies (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           customerId INTEGER NOT NULL,
+          customerName TEXT NOT NULL,
+          tcNumber TEXT,
           policyNumber TEXT NOT NULL,
           plateNumber TEXT,
           startDate TEXT NOT NULL,
           endDate TEXT NOT NULL,
           premium REAL NOT NULL,
           status TEXT NOT NULL,
-          type TEXT NOT NULL,
+          policyType TEXT NOT NULL,
+          description TEXT,
           createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (customerId) REFERENCES customers(id)
         );
@@ -101,29 +104,74 @@ export async function getDb(): Promise<Database> {
         CREATE TABLE IF NOT EXISTS policy_files (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           policyId INTEGER NOT NULL,
-          fileName TEXT NOT NULL,
-          fileUrl TEXT NOT NULL,
-          fileType TEXT NOT NULL,
-          fileSize INTEGER NOT NULL,
-          uploadDate TEXT DEFAULT CURRENT_TIMESTAMP,
+          name TEXT NOT NULL,
+          url TEXT NOT NULL,
+          type TEXT NOT NULL,
+          size INTEGER NOT NULL,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (policyId) REFERENCES policies(id)
         );
       `);
 
-      // Existing customers table için tcNumber alanını ekle
+      // Mevcut tabloları güncelle
       try {
-        await db.exec(`ALTER TABLE customers ADD COLUMN tcNumber TEXT`);
+        // policies tablosuna eksik sütunları ekle
+        await db.exec(`ALTER TABLE policies ADD COLUMN customerName TEXT`);
+        await db.exec(`ALTER TABLE policies ADD COLUMN tcNumber TEXT`);
+        await db.exec(`ALTER TABLE policies ADD COLUMN description TEXT`);
+        await db.exec(`ALTER TABLE policies ADD COLUMN policyType TEXT`);
+
+        // policy_files tablosundaki sütun isimlerini güncelle
+        // Önce mevcut verileri yedekle
         await db.exec(
-          `ALTER TABLE customers ADD COLUMN updatedAt TEXT DEFAULT CURRENT_TIMESTAMP`
+          `CREATE TABLE IF NOT EXISTS policy_files_backup AS SELECT * FROM policy_files`
         );
+
+        // Eski tabloyu sil ve yenisini oluştur
+        await db.exec(`DROP TABLE IF EXISTS policy_files`);
+        await db.exec(`
+          CREATE TABLE policy_files (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            policyId INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            url TEXT NOT NULL,
+            type TEXT NOT NULL,
+            size INTEGER NOT NULL,
+            createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (policyId) REFERENCES policies(id)
+          )
+        `);
+
+        // Eğer yedekte veri varsa, dönüştürerek geri yükle
+        const backupData = await db.all(
+          `SELECT name FROM sqlite_master WHERE type='table' AND name='policy_files_backup'`
+        );
+        if (backupData.length > 0) {
+          await db.exec(`
+            INSERT INTO policy_files (policyId, name, url, type, size, createdAt)
+            SELECT policyId, 
+                   COALESCE(fileName, name) as name,
+                   COALESCE(fileUrl, url) as url,
+                   COALESCE(fileType, type) as type,
+                   COALESCE(fileSize, size) as size,
+                   COALESCE(uploadDate, createdAt) as createdAt
+            FROM policy_files_backup
+          `);
+          await db.exec(`DROP TABLE policy_files_backup`);
+        }
       } catch (error) {
-        // Columns already exist, ignore error
-        console.log("Tablolar zaten güncellenmiş:", error);
+        console.log(
+          "Tablo güncellemeleri tamamlandı veya zaten mevcut:",
+          error
+        );
       }
 
       // Tablo yapısını kontrol et
       const tableInfo = await db.all("PRAGMA table_info(policy_files)");
       console.log("policy_files tablo yapısı:", tableInfo);
+
+      const policiesInfo = await db.all("PRAGMA table_info(policies)");
+      console.log("policies tablo yapısı:", policiesInfo);
 
       console.log("Veritabanı bağlantısı başarılı");
     } catch (error) {

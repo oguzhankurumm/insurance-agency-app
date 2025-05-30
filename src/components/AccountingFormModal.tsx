@@ -6,9 +6,18 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { AccountingFormData, AccountingRecord } from "@/types/accounting";
 
+interface AccountingModalFormData {
+  customerId: string;
+  plateNumber?: string;
+  transactionDate: Date;
+  amount: number;
+  type: "Gelir" | "Gider";
+  description: string;
+}
+
 const schema = yup.object({
   customerId: yup.string().required("Müşteri seçimi zorunludur"),
-  plateNumber: yup.string(),
+  plateNumber: yup.string().optional(),
   transactionDate: yup.date().required("Tarih seçimi zorunludur"),
   amount: yup
     .number()
@@ -19,7 +28,7 @@ const schema = yup.object({
     .oneOf(["Gelir", "Gider"] as const)
     .required("Tür seçimi zorunludur"),
   description: yup.string().required("Açıklama zorunludur"),
-});
+}) satisfies yup.ObjectSchema<AccountingModalFormData>;
 
 interface AccountingFormModalProps {
   isOpen: boolean;
@@ -36,11 +45,14 @@ export default function AccountingFormModal({
   initialData,
   customers,
 }: AccountingFormModalProps) {
-  const defaultValues = initialData
+  const defaultValues: AccountingModalFormData = initialData
     ? {
-        ...initialData,
         customerId: initialData.customerId.toString(),
+        plateNumber: initialData.plateNumber || "",
         transactionDate: new Date(initialData.transactionDate),
+        amount: initialData.amount,
+        type: initialData.type,
+        description: initialData.description,
       }
     : {
         customerId: "",
@@ -58,15 +70,26 @@ export default function AccountingFormModal({
     watch,
     formState: { errors },
     reset,
-  } = useForm<AccountingFormData>({
+  } = useForm<AccountingModalFormData>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: yupResolver(schema) as any,
     defaultValues,
   });
 
   const transactionDate = watch("transactionDate");
 
-  const onFormSubmit = (data: AccountingFormData) => {
-    onSubmit(data);
+  const onFormSubmit = (data: AccountingModalFormData) => {
+    // AccountingModalFormData'yı AccountingFormData'ya dönüştür
+    const formData: AccountingFormData = {
+      policyNumber: "", // Modal'da policy kullanılmıyor
+      customerId: data.customerId,
+      plateNumber: data.plateNumber,
+      transactionDate: data.transactionDate,
+      amount: data.amount,
+      type: data.type,
+      description: data.description,
+    };
+    onSubmit(formData);
     reset();
   };
 

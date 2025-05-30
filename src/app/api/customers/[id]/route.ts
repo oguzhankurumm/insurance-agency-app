@@ -13,9 +13,15 @@ interface Customer {
   updatedAt: string;
 }
 
-export async function GET(request: Request, params: any) {
+interface RouteParams {
+  params: {
+    id: string;
+  };
+}
+
+export async function GET(request: Request, { params }: RouteParams) {
   try {
-    const { id } = params.params;
+    const { id } = params;
     // Müşteri bilgilerini al
     const customer = await dbGet<Customer>(
       "SELECT * FROM customers WHERE id = ?",
@@ -50,9 +56,9 @@ export async function GET(request: Request, params: any) {
   }
 }
 
-export async function PUT(request: Request, params: any) {
+export async function PUT(request: Request, { params }: RouteParams) {
   try {
-    const { id } = params.params;
+    const { id } = params;
     const data = await request.json();
     const { name, tcNumber, email, phone, address } = data;
 
@@ -98,9 +104,9 @@ export async function PUT(request: Request, params: any) {
   }
 }
 
-export async function DELETE(request: Request, params: any) {
+export async function DELETE(request: Request, { params }: RouteParams) {
   try {
-    const { id } = params.params;
+    const { id } = params;
     // Müşterinin var olduğunu kontrol et
     const customer = await dbGet<Customer>(
       "SELECT id FROM customers WHERE id = ?",
